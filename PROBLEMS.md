@@ -212,3 +212,51 @@ ask: diagram
 - Ea(forward) = 120 − 50 = **70 kJ**
 - Ea(reverse) = 120 − 20 = **100 kJ**
 - with the catalyst: Ea(forward) = 90 − 50 = **40 kJ**, Ea(reverse) = **70 kJ**, ΔH still **−30 kJ**
+
+---
+
+## Entropy (BRIEF §5 T13–T15)
+
+Data: P15–P17 reuse the user's P10 / P11 data; P18–P19 use CRC values (the `chemicals` package).
+Shown values have 1 decimal (the default for J/K).
+
+## P15 — ΔS°יקום, NH₃ at 298 K (6.9)
+```
+rxn: N2(g) + 3H2(g) -> 2NH3(g)
+dH = -92 kJ
+dS = -199 J/K
+T = 298 K
+ask: spontaneous
+```
+**Expect:** ΔH° = −92000 J; ΔS°סביבה = −(−92000)/298 = **46000/149 ≈ 308.7 J/K**;
+ΔS°יקום = (−199) + 308.7 = **16349/149 ≈ 109.7 J/K** → spontaneous.
+
+## P16 — ΔS°יקום, CaCO₃ at 25°C (6.9)
+```
+rxn: CaCO3(s) -> CaO(s) + CO2(g)
+dH = 178 kJ
+dS = 161 J/K
+T = 25 C
+ask: spontaneous
+```
+**Expect:** T = 25 + 273 = **298 K**; ΔS°סביבה = −178000/298 = **−89000/149 ≈ −597.3 J/K**;
+ΔS°יקום = 161 + (−597.3) = **−65011/149 ≈ −436.3 J/K** → not spontaneous.
+
+## P17 — ΔS°יקום, CaCO₃ at 1200 K (6.9)
+Same reaction, `T = 1200 K`.
+**Expect:** ΔS°סביבה = −178000/1200 = **−445/3 ≈ −148.3 J/K**; ΔS°יקום = **38/3 ≈ 12.7 J/K** → spontaneous.
+
+## P18 — ΔS°יקום, water evaporating at room temperature (6.9)
+```
+rxn: H2O(l) -> H2O(g)
+dH = 44.0 kJ
+dS = 118.8 J/K
+T = room
+ask: spontaneous
+```
+**Expect:** T = 25 + 273 = **298 K**; ΔS°סביבה = −44000/298 = **−22000/149 ≈ −147.7 J/K**;
+ΔS°יקום = 118.8 + (−147.7) = **−21494/745 ≈ −28.9 J/K** → not spontaneous.
+
+## P19 — ΔS°יקום, water evaporating at 100°C (6.9)
+Same reaction, `T = 100 C`.
+**Expect:** T = **373 K**; ΔS°סביבה = −44000/373 **≈ −118.0 J/K**; ΔS°יקום = **1562/1865 ≈ 0.8 J/K** → spontaneous.

@@ -1,0 +1,25 @@
+{
+  "name": "thermo-solver",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "screens": "node scripts/screens.mjs screens S1,S2,S4",
+    "checks": "node scripts/checks.mjs"
+  },
+  "dependencies": {
+    "gsap": "^3.15.0",
+    "katex": "^0.19.1"
+  },
+  "devDependencies": {
+    "@types/katex": "^0.16.8",
+    "playwright": "^1.63.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
+  }
+}
