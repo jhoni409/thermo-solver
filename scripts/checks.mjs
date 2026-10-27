@@ -6,7 +6,7 @@
 import { chromium } from 'playwright';
 
 const base = process.argv[2] ?? 'http://localhost:4179/';
-const ids = ['S1', 'S2', 'S3', 'S4', 'S5'];
+const ids = ['S1', 'S2', 'S3', 'S4', 'S5', 'c:spont'];
 const browser = await chromium.launch();
 let fail = 0;
 const bad = (m) => {
@@ -19,14 +19,20 @@ const bad = (m) => {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
   let checked = 0;
   for (const id of ids) {
-    await page.goto(`${base}?p=${id}`);
+    await page.goto(`${base}?p=${encodeURIComponent(id)}`);
     await page.waitForSelector('body.ready');
     const n = await page.evaluate(() => window.__eq.n());
     for (let i = 0; i < n; i++) {
       await page.evaluate((i) => window.__eq.jump(i), i);
+      // a "guess before you see" step: answer it, so its content is on the card too
+      const opt = await page.$('.card.cur .pd-opt:not([disabled])');
+      if (opt) {
+        await opt.click();
+        await page.waitForTimeout(100);
+      }
       const r = await page.evaluate(() => {
         const out = [];
-        const roots = [...document.querySelectorAll('.card bdi, .q-body bdi, .step-list bdi, .where bdi, .why bdi')];
+        const roots = [...document.querySelectorAll('.card bdi, .q-body bdi, .step-list bdi, .where bdi, .why bdi, .pin bdi, .page bdi')];
         for (const b of roots) {
           const walker = document.createTreeWalker(b, NodeFilter.SHOW_TEXT);
           const chars = [];
@@ -63,6 +69,11 @@ const bad = (m) => {
   let found = false;
   for (let i = 0; i < n && !found; i++) {
     await page.evaluate((i) => window.__eq.jump(i), i);
+    const opt = await page.$('.card.cur .pd-opt:not([disabled])');
+    if (opt) {
+      await opt.click();
+      await page.waitForTimeout(100);
+    }
     const r = await page.evaluate(() => {
       const b = [...document.querySelectorAll('.card.cur .rule-row bdi')].find((x) => /Δ.*>\s*0/.test(x.textContent.replace(/\s/g, ' ')));
       if (!b) return null;

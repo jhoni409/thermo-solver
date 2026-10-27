@@ -1,46 +1,47 @@
-// What the student answers in practice mode, and how it is checked. Built from the same solution as the lesson.
+// What the student answers in practice, and how it is checked. Built from the same solution as the lesson.
+// A question has parts, in the order of the solution (like the exam's א, ב, ג).
 
 import type { Solution } from './solve';
 import { Frac, F } from './frac';
 import { fmt } from './format';
 
-export type Practice =
-  | { kind: 'number'; label: string; answer: Frac; decimals?: number }
-  | { kind: 'choice'; options: string[]; correct: number[]; multi: boolean }
-  | { kind: 'self' };
+export type Part =
+  | { kind: 'number'; label: string; unit: string; answer: Frac; decimals?: number }
+  | { kind: 'choice'; label: string; options: string[]; correct: number };
 
-export function practiceOf(sol: Solution): Practice {
+const S = (who: string) => `\\Delta S^\\circ_{\\text{${who}}}`;
+
+export function partsOf(sol: Solution): Part[] {
   switch (sol.type) {
     case 'spontaneous':
-      return { kind: 'choice', options: ['ספונטני', 'לא ספונטני'], correct: [sol.spont ? 0 : 1], multi: false };
+      return [
+        { kind: 'number', label: `$${S('סביבה')} =$`, unit: 'J/K', answer: sol.dSsurr, decimals: sol.opts.decimals },
+        { kind: 'number', label: `$${S('יקום')} =$`, unit: 'J/K', answer: sol.dStot, decimals: sol.opts.decimals },
+        { kind: 'choice', label: 'התהליך:', options: ['ספונטני', 'לא ספונטני'], correct: sol.spont ? 0 : 1 },
+      ];
   }
 }
 
-/** a typed number is right when it matches the answer as the app shows it, rounded or cut ("לא לעגל") */
-export function checkNumber(p: Extract<Practice, { kind: 'number' }>, typed: string): boolean {
+/**
+ * A typed number is right when it is the answer as the app shows it, rounded or cut ("לא לעגל"),
+ * or within one unit of the last decimal / 1% (when an earlier part was rounded).
+ */
+export function checkNumber(p: Extract<Part, { kind: 'number' }>, typed: string): boolean {
   let v: Frac;
   try {
-    v = F(typed.replace(',', '.').trim());
+    v = F(typed.replace(',', '.').replace(/[−–]/g, '-').trim());
   } catch {
     return false;
   }
   if (v.eq(p.answer)) return true;
-  const o = p.decimals != null ? { decimals: p.decimals } : { sig: 4 };
-  if (fmt(p.answer, o).s === fmt(v, o).s) return true;
-  // allow 1% when the student rounded differently
-  const a = p.answer.toNumber();
-  return a !== 0 && Math.abs(v.toNumber() - a) / Math.abs(a) <= 0.01;
+  const d = p.decimals ?? 2;
+  if (fmt(p.answer, { decimals: d }).s === fmt(v, { decimals: d }).s) return true;
+  const diff = Math.abs(v.toNumber() - p.answer.toNumber());
+  return diff <= 10 ** -d + 1e-9 || diff <= Math.abs(p.answer.toNumber()) * 0.01;
 }
 
-export const answerText = (p: Practice): string => {
-  switch (p.kind) {
-    case 'number': {
-      const f = fmt(p.answer, p.decimals != null ? { decimals: p.decimals } : {});
-      return `${p.label.replace(/=\$$/, `${f.approx ? '\\approx' : '='} ${f.s}$`)}`;
-    }
-    case 'choice':
-      return p.correct.map((i) => p.options[i]).join(' · ');
-    case 'self':
-      return '';
-  }
-};
+export function answerText(p: Part): string {
+  if (p.kind === 'choice') return p.options[p.correct];
+  const f = fmt(p.answer, p.decimals != null ? { decimals: p.decimals } : {});
+  return `${p.label.replace(/=\$$/, `${f.approx ? '\\approx' : '='} ${f.s}\\,\\mathrm{${p.unit}}$`)}`;
+}

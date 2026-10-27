@@ -1,28 +1,37 @@
-// The app shell: top bar, the question and the list of steps (side), the board, prev / next,
-// the library (with ∞ new problems), the input box, the original graph, keyboard help.
+// The app shell: top bar, and the views it switches between:
+//   home (the learning map) · topic · dictionary of exam wordings · practice / review   → the page area
+//   a lesson (a solved problem, or a topic's "what is it")                               → side + board + bottom bar
+// Routes are hashes: #t:spont, #c:spont, #d:spont, #pr:spont, #review, #S1, #g-spontaneous-123 ('' = home).
 
 import { parse, InputError, EXAMPLE, type Problem } from '../engine/parse';
-import { solve, type Solution } from '../engine/solve';
-import { statement } from '../engine/statement';
-import { generate, fromId, kindOfType, GEN_KINDS, type GenKind } from '../engine/generate';
+import { solve } from '../engine/solve';
+import { statement, type Seg } from '../engine/statement';
+import { textLines } from '../engine/text';
+import { generate, fromId, GEN_KINDS } from '../engine/generate';
 import { LIBRARY, byId, type LibProblem } from '../library/problems';
 import { lessonOf, type Step } from '../lesson/lessons';
 import { Board, STAGE_HE } from '../lesson/board';
+import { topicById, topicOfType } from '../learn/topics';
+import { conceptOf } from '../learn/concepts';
+import { markConcept, markSolved, setLast, dueItems, load } from '../learn/progress';
 import { el, he, tex } from './dom';
 import { Player, reducedMotion } from './player';
-import { openPractice } from './practice';
+import { renderHome, renderTopic, renderDict, type Nav } from './home';
+import { renderPractice, type PracticeQ } from './practice';
 
 const SPEEDS = [0.5, 0.75, 1, 1.5, 2];
 
-/** a library problem, or a generated one (same shape) */
-export type Meta = LibProblem & { kind?: GenKind };
+/** a library problem, or a generated one */
+export type Meta = Omit<LibProblem, 'group'> & { group?: string };
 
-interface Current {
-  input: string;
-  meta?: Meta;
-  problem: Problem;
-  sol: Solution;
+interface Lesson {
+  title: string;
   steps: Step[];
+  lines?: Seg[][]; // the question panel (none for a concept lesson)
+  ask?: string;
+  meta?: Meta;
+  topic?: string;
+  onEnd?: () => void;
 }
 
 const store = {
@@ -43,26 +52,24 @@ const store = {
 };
 
 const newSeed = () => Math.floor(Math.random() * 1e9);
+const metaOf = (id: string): Meta | null => byId(id) ?? fromId(id);
 
 export function startApp(root: HTMLElement) {
   root.innerHTML = '';
-  const app = el('div', 'app', root);
+  const app = el('div', 'app mode-home', root);
 
   // ---------------- top bar
   const top = el('header', 'topbar', app);
-  el('span', 'tb-title', top, 'אנרגיה ואנטרופיה');
-  const probTitle = el('div', 'tb-prob', top);
+  const title = el('button', 'tb-title', top, 'אנרגיה ואנטרופיה');
+  const crumb = el('div', 'tb-prob', top);
   const acts = el('div', 'tb-acts', top);
-  const btnLib = el('button', 'tb-btn', acts, 'אוסף שאלות');
-  const btnMore = el('button', 'tb-btn accent', acts, '∞ שאלה חדשה');
-  btnMore.title = 'שאלה חדשה מאותו סוג (N)';
-  const btnPractice = el('button', 'tb-btn', acts, 'תרגול');
-  // ∞ and practice come after every question type works (BRIEF §12)
-  btnPractice.hidden = !GEN_KINDS.length;
+  const btnMap = el('button', 'tb-btn', acts, 'מפת הלימוד');
+  const btnRev = el('button', 'tb-btn accent', acts, 'חזרה');
   const btnMenu = el('button', 'tb-btn icon', acts, '⋯');
   btnMenu.setAttribute('aria-label', 'עוד');
   const menu = el('div', 'menu', app);
   menu.hidden = true;
+  const btnMore = el('button', 'menu-item', menu, '∞ שאלה חדשה מאותו סוג');
   const btnEdit = el('button', 'menu-item', menu, '✎ הקלדת שאלה');
   const btnOrig = el('button', 'menu-item', menu, 'השאלה המקורית');
   const speedRow = el('div', 'menu-item speed-row', menu);
@@ -72,17 +79,15 @@ export function startApp(root: HTMLElement) {
   const speedLab = el('span', 'sp-lab', speedBox, '1×');
   const bFast = el('button', 'sp-btn', speedBox, '+');
   const btnKeys = el('button', 'menu-item', menu, 'מקשים');
-  const navP = el('div', 'menu-item speed-row', menu);
-  el('span', '', navP, 'באוסף');
-  const navPBox = el('div', 'speed', navP);
-  const bPrevP = el('button', 'sp-btn wide', navPBox, '‹ הקודמת');
-  const bNextP = el('button', 'sp-btn wide', navPBox, 'הבאה ›');
 
-  // ---------------- main: the question and the steps (side), the board
+  // ---------------- page area (map, topic, dictionary, practice)
+  const page = el('div', 'page', app);
+
+  // ---------------- lesson: the question and the steps (side), the board
   const main = el('div', 'main', app);
   const side = el('aside', 'side', main);
   const qBox = el('section', 'q-box', side);
-  el('div', 'side-h', qBox, 'השאלה');
+  const qHead = el('div', 'side-h', qBox, 'השאלה');
   const qBody = el('div', 'q-body', qBox);
   const stepsBox = el('nav', 'steps-box', side);
   el('div', 'side-h', stepsBox, 'הדרך');
@@ -106,37 +111,6 @@ export function startApp(root: HTMLElement) {
   bPlay.setAttribute('aria-label', 'ניגון אוטומטי');
   const bNext = el('button', 'nav-btn next', nav, 'הבא →');
   bNext.setAttribute('aria-label', 'קדימה');
-
-  // ---------------- library drawer, with endless problems on top
-  const lib = el('div', 'drawer', app);
-  lib.hidden = true;
-  const libIn = el('div', 'drawer-in', lib);
-  el('div', 'drawer-h', libIn, 'אוסף שאלות');
-  if (GEN_KINDS.length) el('div', 'lib-group', libIn, '∞ שאלה חדשה (בלי סוף)');
-  const genBox = el('div', 'gen-grid', libIn);
-  genBox.hidden = !GEN_KINDS.length;
-  const genBtn = (k: GenKind | 'any', label: string) => {
-    const b = el('button', 'gen-btn', genBox, he(label));
-    b.onclick = () => {
-      closeAll();
-      loadGen(k);
-    };
-  };
-  genBtn('any', 'מעורב');
-  for (const g of GEN_KINDS) genBtn(g.kind, g.he);
-  const groups = new Map<string, HTMLElement>();
-  for (const p of LIBRARY) {
-    if (!groups.has(p.group)) {
-      el('div', 'lib-group', libIn, p.group);
-      groups.set(p.group, el('div', 'lib-list', libIn));
-    }
-    const b = el('button', 'lib-item', groups.get(p.group)!, he(p.title));
-    b.dataset.id = p.id;
-    b.onclick = () => {
-      closeAll();
-      loadMeta(p);
-    };
-  }
 
   // ---------------- dialogs
   const dlg = el('div', 'dialog', app);
@@ -181,7 +155,6 @@ ask: spontaneous`,
     ['R', 'מההתחלה'],
     ['A', 'ניגון אוטומטי'],
     ['− / +', 'לאט יותר / מהר יותר'],
-    ['N', 'עוד שאלה מאותו סוג'],
     ['W', 'למה?'],
     ['Esc', 'סגירה'],
   ]) {
@@ -191,13 +164,12 @@ ask: spontaneous`,
   }
 
   const closeAll = () => {
-    lib.hidden = true;
     dlg.hidden = true;
     orig.hidden = true;
     keys.hidden = true;
     menu.hidden = true;
   };
-  const anyOpen = () => !lib.hidden || !dlg.hidden || !orig.hidden || !keys.hidden || !menu.hidden || !!app.querySelector('.practice');
+  const anyOpen = () => !dlg.hidden || !orig.hidden || !keys.hidden || !menu.hidden;
   btnMenu.onclick = (e) => {
     e.stopPropagation();
     const open = menu.hidden;
@@ -207,28 +179,23 @@ ask: spontaneous`,
   document.addEventListener('click', (e) => {
     if (!menu.hidden && !(e.target as HTMLElement).closest('.menu')) menu.hidden = true;
   });
-  lib.onclick = (e) => e.target === lib && closeAll();
   dlg.onclick = (e) => e.target === dlg && closeAll();
   orig.onclick = () => closeAll();
   keys.onclick = () => closeAll();
-  btnLib.onclick = () => {
-    closeAll();
-    lib.hidden = false;
-  };
   btnKeys.onclick = () => {
     closeAll();
     keys.hidden = false;
   };
   btnEdit.onclick = () => {
     closeAll();
-    ta.value = cur?.input ?? EXAMPLE;
+    ta.value = cur?.meta?.input ?? EXAMPLE;
     dlgErr.textContent = '';
     dlg.hidden = false;
     ta.focus();
   };
   bCancel.onclick = closeAll;
   bSolve.onclick = () => {
-    const err = tryLoad(ta.value);
+    const err = openTyped(ta.value);
     if (err) {
       dlgErr.innerHTML = '';
       el('div', 'err-line', dlgErr, he(err.he));
@@ -247,17 +214,14 @@ ask: spontaneous`,
     }
     orig.hidden = false;
   };
-  btnPractice.onclick = () => {
+  btnMore.onclick = () => {
     closeAll();
-    player?.stop();
-    openPractice(app, (p) => loadMeta(p));
+    const k = GEN_KINDS.find((g) => g.topic === cur?.topic);
+    if (k) go(`#${generate(k.kind, newSeed()).id}`);
   };
-  btnMore.onclick = () => moreLikeThis();
-  bPrevP.onclick = () => stepProblem(-1);
-  bNextP.onclick = () => stepProblem(1);
 
   // ---------------- state
-  let cur: Current | null = null;
+  let cur: Lesson | null = null;
   let player: Player | null = null;
   let speed = parseFloat(store.get('th-speed') ?? '1');
   if (!SPEEDS.includes(speed)) speed = 1;
@@ -281,14 +245,30 @@ ask: spontaneous`,
   };
   setSpeed(speed);
 
-  // the question, with every given value marked so a step can light up what it uses
-  function renderQuestion(p: Problem) {
-    const st = statement(p);
+  const setMode = (m: 'home' | 'lesson') => {
+    app.classList.toggle('mode-home', m === 'home');
+    app.classList.toggle('mode-lesson', m === 'lesson');
+    if (m === 'home') {
+      player?.destroy();
+      player = null;
+      cur = null;
+    }
+    const due = dueItems().length;
+    btnRev.textContent = due ? `חזרה (${due})` : 'חזרה';
+  };
+  const setCrumb = (parts: string[]) => {
+    crumb.innerHTML = parts.map((p) => he(p)).join('<span class="sep"> ‹ </span>');
+  };
+
+  // the question, with every given value and exam phrase marked so a step can light up what it uses
+  function renderQuestion(lines: Seg[][] | undefined, ask?: string) {
     qBody.innerHTML = '';
-    for (const line of st.lines) {
+    qBox.hidden = !lines;
+    if (!lines) return;
+    for (const line of lines) {
       const d = el('div', 'st-line', qBody);
       for (const s of line) {
-        const e = s.tex != null ? el('bdi', 'm', d, tex(s.tex)) : el('span', '', d, he(s.text ?? ''));
+        const e = s.tex != null ? el('bdi', 'm', d, tex(s.tex)) : el('span', s.phrase ? 'phr' : '', d, he(s.text ?? ''));
         if (s.tex != null) e.dir = 'ltr';
         if (s.key) {
           e.classList.add('given');
@@ -296,18 +276,19 @@ ask: spontaneous`,
         }
       }
     }
-    if (st.ask) el('div', 'st-line st-ask', qBody, he(st.ask));
+    if (ask) el('div', 'st-line st-ask', qBody, he(ask));
   }
 
   let items: HTMLElement[] = [];
   function renderSteps(steps: Step[]) {
     stepList.innerHTML = '';
     items = [];
-    let last = -1;
+    let last = '';
     steps.forEach((s, k) => {
-      if (s.stage !== last) {
-        el('li', 'step-stage', stepList, STAGE_HE[s.stage]);
-        last = s.stage;
+      const g = s.group ?? STAGE_HE[s.stage];
+      if (g !== last) {
+        el('li', 'step-stage', stepList, g);
+        last = g;
       }
       const li = el('li', 'step-item', stepList);
       el('span', 'step-no', li, String(k + 1));
@@ -332,39 +313,26 @@ ask: spontaneous`,
     why.innerHTML = s.why ? s.why.split('\n').map((l) => `<div>${he(l)}</div>`).join('') : '';
     btnWhy.disabled = !s.why;
     bBack.disabled = i <= 0;
-    bNext.disabled = i >= cur.steps.length - 1;
+    const end = i >= cur.steps.length - 1;
+    bNext.textContent = end ? (cur.topic ? 'סיום ✓' : 'הבא →') : 'הבא →';
+    bNext.disabled = end && !cur.topic;
+    bNext.classList.toggle('end', end && !!cur.topic);
     bPlay.textContent = player?.autoOn ? '❚❚' : '▶';
+    if (end) cur.onEnd?.();
     if (window.__eq) window.__eq.i = i;
   }
 
-  function tryLoad(input: string, meta?: Meta): InputError | null {
-    let problem: Problem;
-    let sol: Solution;
-    let steps: Step[];
-    try {
-      problem = parse(input);
-      sol = solve(problem);
-      steps = lessonOf(sol, problem);
-    } catch (e) {
-      if (e instanceof InputError) return e;
-      return new InputError(`שגיאה: ${(e as Error).message}`);
-    }
-    cur = { input, meta, problem, sol, steps };
+  function showLesson(l: Lesson) {
+    setMode('lesson');
+    cur = l;
     errBox.hidden = true;
-    probTitle.innerHTML = meta ? he(meta.title) + (meta.note ? `<span class="note">${he(meta.note)}</span>` : '') : 'שאלה מוקלדת';
-    btnOrig.hidden = !meta?.original;
-    btnMore.hidden = !kindOfType(sol.type);
-    navP.hidden = !meta || LIBRARY.findIndex((p) => p.id === meta.id) < 0;
-    try {
-      // a bare #token is a deep link (library id, or g-kind-seed for a generated one)
-      history.replaceState(null, '', meta ? `#${meta.id}` : location.pathname + location.search);
-    } catch {
-      /* sandboxed frame */
-    }
+    qHead.textContent = 'השאלה';
+    btnOrig.hidden = !l.meta?.original;
+    btnMore.hidden = !GEN_KINDS.some((g) => g.topic === l.topic) || !l.meta;
     player?.destroy();
-    renderQuestion(problem);
-    renderSteps(steps);
-    player = new Player(steps, board, onStep);
+    renderQuestion(l.lines, l.ask);
+    renderSteps(l.steps);
+    player = new Player(l.steps, board, onStep);
     player.rate = speed;
     try {
       player.go(0);
@@ -373,28 +341,48 @@ ask: spontaneous`,
       board.reset();
       showErr(new InputError('לא הצלחתי לבנות את הפתרון לשאלה הזו. בחרו שאלה אחרת.'));
     }
-    return null;
   }
 
-  function loadMeta(p: Meta) {
-    const err = tryLoad(p.input, p);
-    if (err) showErr(err);
+  function build(input: string, text?: string) {
+    const problem: Problem = parse(input);
+    const sol = solve(problem);
+    const steps = lessonOf(sol, problem, text);
+    const st = statement(problem);
+    return { problem, sol, steps, lines: text ? textLines(text, problem) : st.lines, ask: text ? undefined : st.ask };
   }
 
-  function loadGen(k: GenKind | 'any') {
-    loadMeta(generate(k, newSeed()));
+  function openProblem(meta: Meta, back?: string) {
+    try {
+      const b = build(meta.input, meta.text);
+      const topic = meta.topic ?? topicOfType(b.sol.type)?.id;
+      const t = topic ? topicById(topic) : undefined;
+      setCrumb([...(t ? [t.title] : []), meta.title]);
+      showLesson({
+        title: meta.title,
+        steps: b.steps,
+        lines: b.lines,
+        ask: b.ask,
+        meta,
+        topic,
+        onEnd: () => markSolved(meta.id),
+      });
+      returnTo = back ?? (topic ? `#t:${topic}` : '');
+    } catch (e) {
+      setMode('lesson');
+      showErr(e instanceof InputError ? e : new InputError(`שגיאה: ${(e as Error).message}`));
+    }
   }
 
-  function moreLikeThis() {
-    if (!cur) return;
-    const k = cur.meta?.kind ?? kindOfType(cur.sol.type);
-    if (k) loadGen(k);
-  }
-
-  function stepProblem(d: number) {
-    const li = cur?.meta ? LIBRARY.findIndex((p) => p.id === cur!.meta!.id) : -1;
-    if (li < 0) return;
-    loadMeta(LIBRARY[(li + d + LIBRARY.length) % LIBRARY.length]);
+  function openTyped(input: string): InputError | null {
+    try {
+      const b = build(input);
+      setCrumb(['שאלה מוקלדת']);
+      showLesson({ title: 'שאלה מוקלדת', steps: b.steps, lines: b.lines, ask: b.ask });
+      return null;
+    } catch (e) {
+      if (e instanceof InputError) return e;
+      return new InputError(`שגיאה: ${(e as Error).message}`);
+    }
   }
 
   function showErr(err: InputError) {
@@ -404,9 +392,126 @@ ask: spontaneous`,
     if (err.example) (el('pre', 'err-ex', errBox) as HTMLElement).textContent = err.example;
   }
 
+  // ---------------- practice queues
+  const toQ = (m: Meta): PracticeQ => ({ id: m.id, topic: m.topic, input: m.input, text: m.text, title: m.title });
+
+  function topicQueue(topic: string): () => PracticeQ | null {
+    let i = 0;
+    return () => {
+      // first the library questions not practised yet, then endless new ones
+      const fresh = LIBRARY.filter((p) => p.topic === topic && !load().items[p.id]);
+      if (fresh.length) return toQ(fresh[0]);
+      const k = GEN_KINDS.find((g) => g.topic === topic);
+      return k ? toQ(generate(k.kind, newSeed() + i++)) : null;
+    };
+  }
+
+  function reviewQueue(): () => PracticeQ | null {
+    return () => {
+      const d = dueItems()[0];
+      const m = d ? metaOf(d.id) : null;
+      return m ? toQ(m) : null;
+    };
+  }
+
+  // ---------------- routes
+  let returnTo = '';
+  const go = (hash: string) => {
+    if (location.hash === hash || (!hash && !location.hash)) route();
+    else location.hash = hash;
+  };
+
+  const navApi: Nav = {
+    home: () => go(''),
+    topic: (id) => go(`#t:${id}`),
+    concept: (id) => go(`#c:${id}`),
+    problem: (id) => go(`#${id}`),
+    practice: (id) => go(`#pr:${id}`),
+    review: () => go('#review'),
+    dict: (id) => go(`#d:${id}`),
+    go,
+  };
+
+  function route(from = '') {
+    const h = decodeURIComponent(location.hash.slice(1));
+    closeAll();
+    let m: RegExpExecArray | null;
+    if (!h || h === 'map') {
+      setMode('home');
+      setCrumb(['מפת הלימוד']);
+      renderHome(page, navApi);
+      return;
+    }
+    if ((m = /^(t|c|d|pr):(.+)$/.exec(h))) {
+      const t = topicById(m[2]);
+      if (!t) return go('');
+      setLast(`#${h}`);
+      if (m[1] === 't') {
+        setMode('home');
+        setCrumb([t.title]);
+        renderTopic(page, t, navApi);
+      } else if (m[1] === 'd') {
+        setMode('home');
+        setCrumb([t.title, 'איך שואלים']);
+        renderDict(page, t, navApi);
+      } else if (m[1] === 'pr') {
+        setMode('home');
+        setCrumb([t.title, 'תרגול']);
+        renderPractice(page, {
+          head: `תרגול: ${t.title}`,
+          back: { label: t.title, go: () => navApi.topic(t.id) },
+          next: topicQueue(t.id),
+          open: (q) => go(`#${q.id}`),
+        });
+      } else {
+        const steps = conceptOf(t.id);
+        if (!steps) return go(`#t:${t.id}`);
+        setCrumb([t.title, 'מה זה']);
+        showLesson({ title: 'מה זה', steps, topic: t.id, onEnd: () => markConcept(t.id) });
+        returnTo = `#t:${t.id}`;
+      }
+      return;
+    }
+    if (h === 'review') {
+      setMode('home');
+      setCrumb(['חזרה להיום']);
+      renderPractice(page, {
+        head: 'חזרה להיום',
+        back: { label: 'מפת הלימוד', go: () => navApi.home() },
+        next: reviewQueue(),
+        open: (q) => go(`#${q.id}`),
+        left: () => dueItems().length,
+      });
+      return;
+    }
+    const meta = metaOf(h);
+    if (meta) {
+      setLast(`#${h}`);
+      // opened from practice or review → "סיום" goes back there
+      openProblem(meta, from.startsWith('#pr:') || from === '#review' ? from : undefined);
+      return;
+    }
+    go('');
+  }
+
+  let prevHash = location.hash;
+  window.addEventListener('hashchange', () => {
+    const from = prevHash;
+    prevHash = location.hash;
+    route(from);
+  });
+
+  title.onclick = () => navApi.home();
+  btnMap.onclick = () => navApi.home();
+  btnRev.onclick = () => navApi.review();
+
   // ---------------- input
   const toggleAuto = () => player?.setAuto(!player.autoOn);
-  bNext.onclick = () => player?.next();
+  bNext.onclick = () => {
+    if (!player || !cur) return;
+    if (player.i >= cur.steps.length - 1 && cur.topic) go(returnTo || `#t:${cur.topic}`);
+    else player.next();
+  };
   bBack.onclick = () => player?.back();
   bPlay.onclick = toggleAuto;
   btnWhy.onclick = () => (why.hidden = !why.hidden);
@@ -432,7 +537,6 @@ ask: spontaneous`,
     else if (e.key === 'a' || e.key === 'A') toggleAuto();
     else if (e.key === '-' || e.key === '_') bump(-1);
     else if (e.key === '+' || e.key === '=') bump(1);
-    else if (e.key === 'n' || e.key === 'N') moreLikeThis();
     else if (e.key === 'w' || e.key === 'W') why.hidden = !why.hidden;
   });
 
@@ -466,18 +570,18 @@ ask: spontaneous`,
     i: -1,
     n: () => cur?.steps.length ?? 0,
     jump: (i: number) => player?.jump(i),
-    load: (id: string) => {
-      const p = byId(id) ?? fromId(id);
-      if (p) loadMeta(p);
-    },
+    load: (id: string) => go(`#${id}`),
     reduced: reducedMotion,
   };
 
   // ---------------- start
   loadFonts().then(() => {
-    const id = new URLSearchParams(location.search).get('p') || location.hash.slice(1);
-    const p: Meta = (id && (byId(id) ?? fromId(id))) || LIBRARY[0];
-    loadMeta(p);
+    const p = new URLSearchParams(location.search).get('p');
+    if (p) {
+      history.replaceState(null, '', `${location.pathname}${location.search}#${p}`);
+      prevHash = location.hash;
+    }
+    route();
     const s = new URLSearchParams(location.search).get('step');
     if (s && player) player.jump(parseInt(s, 10));
     document.body.classList.add('ready');

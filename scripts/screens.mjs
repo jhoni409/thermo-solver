@@ -29,19 +29,21 @@ for (const size of sizes) {
   });
   page.on('console', (m) => m.type() === 'error' && console.error('CONSOLE', m.text()));
   for (const id of ids.split(',')) {
-    await page.goto(`${base}?p=${id}`);
+    await page.goto(id === 'home' ? base : `${base}?p=${encodeURIComponent(id)}`);
     await page.waitForSelector('body.ready');
     const n = await page.evaluate(() => window.__eq.n());
-    for (let i = 0; i < n; i++) {
-      await page.evaluate((i) => window.__eq.jump(i), i);
+    // a page view (map, topic, practice) has no steps: one screenshot
+    for (let i = 0; i < Math.max(n, 1); i++) {
+      if (n) await page.evaluate((i) => window.__eq.jump(i), i);
       await page.waitForTimeout(420);
-      const f = `${outDir}/${id}-${size.name}-${String(i + 1).padStart(2, '0')}.png`;
+      const f = `${outDir}/${id.replace(/[:#]/g, '_') || 'home'}-${size.name}-${String(i + 1).padStart(2, '0')}.png`;
       await page.screenshot({ path: f });
       // the app clips its own overflow, so check the board itself: nothing may stick out sideways
       const sw = await page.evaluate(() => {
         const m = document.querySelector('.main').getBoundingClientRect();
         const b = document.querySelector('.board');
-        return Math.max(document.documentElement.scrollWidth - window.innerWidth, Math.round(-m.left), Math.round(m.right - window.innerWidth), b.scrollWidth - b.clientWidth);
+        const pg = document.querySelector('.page');
+        return Math.max(document.documentElement.scrollWidth - window.innerWidth, Math.round(-m.left), Math.round(m.right - window.innerWidth), b.scrollWidth - b.clientWidth, pg.scrollWidth - pg.clientWidth);
       });
       if (sw > 0) {
         bad++;

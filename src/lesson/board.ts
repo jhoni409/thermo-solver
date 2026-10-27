@@ -6,7 +6,7 @@ import { el, he, tex } from '../ui/dom';
 export type TL = gsap.core.Timeline;
 type Pos = gsap.Position;
 
-export const STAGE_HE = ['זיהוי', 'פתרון', 'מה כותבים במבחן'] as const;
+export const STAGE_HE = ['קוראים את השאלה', 'פתרון', 'מה כותבים במבחן'] as const;
 
 export const ORANGE = '#ff9f43';
 export const BLUE = '#54a0ff';
@@ -65,7 +65,7 @@ export class Card {
   }
 
   /** lhs = rhs₁ = rhs₂ …, one row after another with the "=" signs under each other. Each rhs starts with its relation. */
-  eqs(t: TL, lhs: string, rhs: string[], last: '' | 'ans' | 'new' = 'new', pos: Pos = '>'): HTMLElement[] {
+  eqs(t: TL, lhs: string, rhs: string[], last: '' | 'ans' | 'new' | 'bad' = 'new', pos: Pos = '>'): HTMLElement[] {
     const g = el('div', 'c-eqs', this.body);
     g.dir = 'ltr';
     return rhs.map((r, i) => {
@@ -175,6 +175,104 @@ export class Card {
     });
     show(t, bs, pos, 0.25);
     pop(t, os, '<0.2');
+    return w;
+  }
+
+  /** the exam wording, decoded: "בשאלה כתוב" ← what it means (← what to do), one row at a time */
+  decode(t: TL, rows: { quote: string; means: string; todo?: string; tag?: string; hidden?: boolean; also?: string[] }[], pos: Pos = '>'): HTMLElement {
+    const box = el('div', 'c-decode', this.body);
+    const head = el('div', 'dc-row dc-head', box);
+    el('div', 'dc-q', head, 'בשאלה כתוב');
+    el('div', 'dc-a', head, '');
+    el('div', 'dc-m', head, 'פירוש');
+    const rs = rows.map((r) => {
+      const row = el('div', `dc-row${r.hidden ? ' hidden-given' : ''}`, box);
+      if (r.tag) row.dataset.tag = r.tag;
+      const q = el('div', 'dc-q', row);
+      el('span', 'dc-quote', q, `״${he(r.quote)}״`);
+      if (r.hidden) el('span', 'dc-flag', q, 'נסתר!');
+      el('div', 'dc-a', row, '←');
+      const m = el('div', 'dc-m', row, he(r.means));
+      if (r.todo) el('div', 'dc-todo', m, he(r.todo));
+      if (r.also?.length) el('div', 'dc-also', q, `נכתב גם: ${r.also.map((a) => `״${he(a)}״`).join(' · ')}`);
+      return row;
+    });
+    show(t, head, pos);
+    show(t, rs, '>', 0.35);
+    return box;
+  }
+
+  /**
+   * "guess before you see": a question with options; the step's content waits until one is picked.
+   * `picked` = an earlier answer (the card is rebuilt answered), else onPick is called once.
+   */
+  predict(q: string, options: string[], correct: number, picked: number | undefined, onPick: (i: number) => void): HTMLElement {
+    const box = el('div', 'c-predict', this.body);
+    el('div', 'pd-h', box, 'רגע, לפני שממשיכים');
+    el('div', 'pd-q', box, he(q));
+    const row = el('div', 'pd-opts', box);
+    const res = el('div', 'pd-res', box);
+    const bs = options.map((o) => el('button', 'pd-opt', row, he(o)));
+    const settle = (i: number) => {
+      bs.forEach((b, j) => {
+        b.disabled = true;
+        b.classList.toggle('ok', j === correct);
+        b.classList.toggle('no', j === i && i !== correct);
+      });
+      res.className = `pd-res ${i === correct ? 'ok' : i < 0 ? '' : 'no'}`;
+      res.innerHTML = i === correct ? '✓ נכון' : i < 0 ? `התשובה: ${he(options[correct])}` : `✗ התשובה: ${he(options[correct])}`;
+    };
+    if (picked !== undefined) settle(picked);
+    else
+      bs.forEach((b, i) => {
+        b.onclick = () => {
+          settle(i);
+          onPick(i);
+        };
+      });
+    return box;
+  }
+
+  /** system inside surroundings; together the universe */
+  nest(t: TL, o: { inner: string; outer: string; foot: string }, pos: Pos = '>'): HTMLElement {
+    const w = el('div', 'c-nest', this.body);
+    const out = el('div', 'nest-out', w);
+    el('div', 'nest-label', out, he(o.outer));
+    const inn = el('div', 'nest-in', out, he(o.inner));
+    const foot = el('div', 'nest-foot', w, he(o.foot));
+    show(t, out, pos);
+    pop(t, inn, '>-0.1');
+    show(t, foot, '>');
+    return w;
+  }
+
+  /** heat leaving the system (exo) or entering it (endo), and what the surroundings' entropy does */
+  heat(t: TL, o: { dir: 'out' | 'in'; sys: string; surr: string; chip: { html: string; cls: string } }, pos: Pos = '>'): HTMLElement {
+    const w = el('div', 'c-heat', this.body);
+    const s = el('div', 'ht-box sys', w, he(o.sys));
+    const mid = el('div', 'ht-mid', w);
+    el('div', 'ht-label', mid, 'חום');
+    const arr = el('div', 'ht-arrow', mid, o.dir === 'out' ? '⟵' : '⟶');
+    const r = el('div', 'ht-side', w);
+    el('div', 'ht-box', r, he(o.surr));
+    const ch = el('div', `chip ${o.chip.cls}`, r, o.chip.html);
+    show(t, [s, r], pos, 0.1);
+    show(t, mid, '>-0.1');
+    t.fromTo(arr, { scaleX: 0 }, { scaleX: 1, transformOrigin: o.dir === 'out' ? '100% 50%' : '0% 50%', duration: 0.6, ease: 'power2.out' }, '<');
+    pop(t, ch, '>');
+    return w;
+  }
+
+  /** a numbered recipe, one short line per step */
+  recipe(t: TL, lines: string[], pos: Pos = '>'): HTMLElement {
+    const w = el('ol', 'c-recipe', this.body);
+    const rs = lines.map((l, i) => {
+      const li = el('li', '', w);
+      el('span', 'rc-no', li, String(i + 1));
+      el('span', 'rc-t', li, he(l));
+      return li;
+    });
+    show(t, rs, pos, 0.3);
     return w;
   }
 

@@ -10,6 +10,8 @@ export interface Seg {
   text?: string;
   tex?: string;
   key?: string;
+  /** an exam phrase that the lesson decodes */
+  phrase?: boolean;
 }
 
 export interface Statement {

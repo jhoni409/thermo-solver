@@ -125,7 +125,7 @@ All topics are √ in the 2026 מיקוד (p. 8: energy, 37381; p. 16: entropy, 
 1. Sign of ΔS°מערכת from the equation (moles of gas, states): חיובי / שלילי / לא ניתן לקבוע
 2. ΔS°מערכת = ΣS°(תוצרים) − ΣS°(מגיבים)
 3. Backwards: the unknown S° of one substance from a given ΔS°
-4. ΔH° by Hess, and by bond enthalpies (gases only; also an unknown bond energy, backwards)
+4. ΔH° by ΔH°f, and by bond enthalpies (gases only; also an unknown bond energy, backwards)
 5. ΔS°סביבה = −ΔH°/T
 6. ΔS°יקום = ΔS°מערכת + ΔS°סביבה → spontaneous or not (second law)
 7. Backwards from ΔS°יקום to ΔS°סביבה, ΔS°מערכת or ΔH°
@@ -133,6 +133,9 @@ All topics are √ in the 2026 מיקוד (p. 8: energy, 37381; p. 16: entropy, 
 9. Spontaneous but does not happen: activation energy, heating, catalyst (T16)
 10. ΔH° with a liquid vs a gaseous product (T17)
 
+**Newer מיקוד (summer 2026, inside `maane-2026`) changes 37381:** Hess's law **X**, factors affecting rate **X**,
+bond-energy factors **X**; still √: bond-enthalpy calculation (gases only), phase-change enthalpies, ΔH° and Q,
+Ea and catalyst. The 37282 entropy part is unchanged. So Hess is out (rules T5 kept but unused).
 **Out:** ΔG (not in the מיקוד, not in the course). Not required by the מיקוד: comparing S° of different
 substances, ΔS°יקום = 0, the turning temperature, the temperature range of spontaneity.
 **Later, if at all:** calorimetry, heat for an amount, the energy diagram (PROBLEMS P1–P4, P14).
@@ -426,3 +429,26 @@ Glossary (keep the wording consistent):
 - קלורימטר, חום סגולי c
 - אנטרופיה ΔS
 - אנרגיה חופשית ΔG, תהליך ספונטני
+
+---
+
+## 13. The learning system (2026-10-27)
+
+The equilibrium app was a library of solved problems; the user forgot what they had learned and could not tell
+what exam questions were asking. So:
+
+- **Home = the learning map** (`learn/topics.ts`): every topic in the order they build on each other, with its
+  state (מה זה ✓ · דוגמאות n/m · תרגול) and a "חזרה להיום" button.
+- **A topic** = ① מה זה (concept cards, no numbers) ② איך שואלים במבחן (the wording dictionary) ③ solved
+  examples ④ practice. Its recipe (3 lines) is shown on top as the thing to remember.
+- **Exam wording:** library questions are written as the exam writes them (`text`, `engine/text.ts`), with every
+  phrase marked `«wording|tag»`. The first lesson cards decode them: "בשאלה כתוב" ← meaning ← what to do; hidden
+  givens ("בטמפרטורת החדר") are flagged, other wordings of the same thing are listed. The dictionary of phrases is
+  `learn/phrases.ts`, built from the user's course wordings (and real exams when they are available).
+- **Inside every solution:** the recipe strip pinned under the reaction (current step lit), "רגע, לפני שממשיכים":
+  guess before the card shows (units, a sign, the verdict), and a "מלכודת" card that works the common mistake to
+  its wrong answer (forgetting ×1000, °C instead of K), all computed by the engine.
+- **Practice and review:** every part of the question is answered (numbers accepted rounded or cut), then the
+  question returns on a schedule (1, 3, 7, 16, 35 days; wrong → today). Progress is in localStorage (this browser).
+- **∞ problems** come in varied exam wordings, so the student meets every phrasing.
+
