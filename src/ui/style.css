@@ -67,6 +67,8 @@ bdi.m,
 .rule-row bdi.m,
 .c-verdict bdi.m,
 .card-say bdi.m,
+.dc-quote bdi.m,
+.dc-m bdi.m,
 .st-line bdi.m {
   white-space: nowrap;
 }
@@ -368,6 +370,8 @@ button.menu-item:hover {
   color: #000;
 }
 .card-say {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 21px;
   font-weight: 500;
   line-height: 1.55;
@@ -1950,6 +1954,201 @@ button.menu-item:hover {
     right: 8px;
     max-width: none;
   }
+}
+
+/* reactants | products columns, a sum under each (T6, T7, T13) */
+.c-cols {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.cl-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 170px;
+  padding: 10px 14px 12px;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface2);
+}
+.cl-col.r {
+  border-color: rgba(255, 159, 67, 0.55);
+}
+.cl-col.p {
+  border-color: rgba(84, 160, 255, 0.55);
+}
+.cl-title {
+  font-size: 15px;
+  color: var(--dim);
+}
+.cl-col.r .cl-title {
+  color: var(--reactant);
+}
+.cl-col.p .cl-title {
+  color: var(--product);
+}
+.cl-row {
+  font-size: 19px;
+  white-space: nowrap;
+}
+.cl-sum {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  font-size: 20px;
+  white-space: nowrap;
+}
+
+/* the energy diagram (T8) */
+.c-levels {
+  width: 100%;
+  max-width: 600px;
+}
+.c-levels svg {
+  direction: ltr;
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.lv-axis {
+  fill: var(--dim);
+  font: 15px var(--he);
+}
+.lv-bar {
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.lv-bar.r {
+  stroke: var(--reactant);
+}
+.lv-bar.p {
+  stroke: var(--product);
+}
+.lv-curve {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 2.5;
+}
+.lv-curve.cat {
+  stroke: var(--answer);
+  stroke-dasharray: 7 6;
+}
+.lv-lab {
+  fill: var(--text);
+  font: 16px var(--he);
+}
+.lv-lab.r {
+  fill: var(--reactant);
+}
+.lv-lab.p {
+  fill: var(--product);
+}
+.lv-lab.ea {
+  fill: var(--focus);
+}
+.lv-lab.cat {
+  fill: var(--answer);
+}
+.lv-lab.dh {
+  fill: var(--wrong);
+}
+.lv-arrow {
+  stroke-width: 2.5;
+}
+.lv-arrow.ea {
+  stroke: var(--focus);
+  color: var(--focus);
+}
+.lv-arrow.cat {
+  stroke: var(--answer);
+  color: var(--answer);
+}
+.lv-arrow.dh {
+  stroke: var(--wrong);
+  color: var(--wrong);
+}
+.lv-guide {
+  stroke: var(--faint);
+  stroke-dasharray: 4 5;
+}
+
+/* the original bagrut page, from the question panel */
+.q-orig {
+  margin-top: 10px;
+  white-space: nowrap;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--dim);
+  font-size: 14px;
+}
+.q-orig:hover {
+  color: var(--text);
+  border-color: var(--faint);
+}
+
+@media (max-width: 719px) {
+  /* one column under the other: reactants, then products (the order of the equation) */
+  .c-cols {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .cl-col {
+    min-width: 0;
+    padding: 8px 8px 10px;
+  }
+  .cl-row {
+    font-size: 15px;
+  }
+  .cl-sum {
+    font-size: 16px;
+  }
+  .lv-lab,
+  .lv-axis {
+    font-size: 20px;
+  }
+}
+
+/* "מאיפה זה?": the lines a card's numbers come from */
+.card {
+  cursor: pointer;
+}
+.card-from {
+  margin-inline-start: auto;
+  align-self: center;
+  font-size: 12px;
+  color: var(--faint);
+  padding: 2px 8px;
+  border: 1px solid var(--line-soft);
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.card:hover .card-from,
+.card.trace-me .card-from {
+  color: var(--focus);
+  border-color: rgba(254, 202, 87, 0.5);
+}
+.card.trace-me {
+  border-color: rgba(254, 202, 87, 0.8);
+}
+.src-hl {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 6px;
+  background-color: rgba(254, 202, 87, 0.1);
+}
+.q-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.phr.reworded {
+  color: var(--focus);
 }
 
 @media (prefers-reduced-motion: reduce) {

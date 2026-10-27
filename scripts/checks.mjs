@@ -6,7 +6,14 @@
 import { chromium } from 'playwright';
 
 const base = process.argv[2] ?? 'http://localhost:4179/';
-const ids = ['S1', 'S2', 'S3', 'S4', 'S5', 'c:spont'];
+// one of every question type (library and endless), and every topic's "what is it"
+const ids = [
+  'S1', 'S3', 'B22-282-1d', 'B24-282-1a2', 'B23-282-2d2', 'B21-282-2c1', 'B26-282-2b', 'K1', 'K2', 'P12a', 'B25-282-1b', 'B21-282-2b',
+  'B25-282-1a', 'B22-282-2a', 'B23-381-5', 'P3', 'P4', 'B24-282-2b', 'B23-282-2c', 'B23-282-1z', 'B25-381-13', 'X-bond-CC', 'P14',
+  'g-spontaneous-3', 'g-back-3', 'g-signs-3', 'g-signs-4', 'g-kinetic-4', 'g-dS-sign-3', 'g-S-unknown-3', 'g-dHf-unknown-3',
+  'g-heat-3', 'g-mass-for-heat-3', 'g-dH-from-q-3', 'g-dH-new-3', 'g-phase-compare-4', 'g-bond-unknown-4', 'g-diagram-5',
+  'c:spont', 'c:exo', 'c:phase', 'c:bonds', 'c:rate', 'c:dS-sign', 'c:dS-calc', 'c:dHf', 'c:back', 'c:signs', 'c:kinetic',
+];
 const browser = await chromium.launch();
 let fail = 0;
 const bad = (m) => {
@@ -32,7 +39,8 @@ const bad = (m) => {
       }
       const r = await page.evaluate(() => {
         const out = [];
-        const roots = [...document.querySelectorAll('.card bdi, .q-body bdi, .step-list bdi, .where bdi, .why bdi, .pin bdi, .page bdi')];
+        // every left-to-right isolate: the math ones, and an answer blank that resolves to LTR ("34.1 kJ")
+        const roots = [...document.querySelectorAll('.card bdi, .q-body bdi, .step-list bdi, .where bdi, .why bdi, .pin bdi, .page bdi')].filter((b) => b.matches(':dir(ltr)'));
         for (const b of roots) {
           const walker = document.createTreeWalker(b, NodeFilter.SHOW_TEXT);
           const chars = [];

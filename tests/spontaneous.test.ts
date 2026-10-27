@@ -41,7 +41,7 @@ describe('6.9 ΔS° surroundings → ΔS° universe → spontaneous (T14, T15)',
   });
 
   it('independent re-computation: ΔS°tot = ΔS°sys − ΔH°·1000/T', () => {
-    for (const p of LIBRARY) {
+    for (const p of LIBRARY.filter((x) => /ask: spontaneous/.test(x.input) && /^dH = /m.test(x.input) && /^dS = /m.test(x.input))) {
       const s = solve(parse(p.input)) as SpontSol;
       const dH = parseFloat(/dH = (\S+)/.exec(p.input)![1]);
       const dSs = parseFloat(/dS = (\S+)/.exec(p.input)![1]);

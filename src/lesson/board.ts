@@ -31,6 +31,13 @@ export function flash(t: TL, e: Element, pos: Pos = '<') {
   t.fromTo(e, { backgroundColor: 'rgba(254,202,87,0.4)' }, { backgroundColor: 'rgba(254,202,87,0)', duration: 1.4, ease: 'power1.out' }, pos);
 }
 
+/**
+ * SVG text has no <bdi>: a Hebrew label is put in a right-to-left isolate, and every run of Latin letters and
+ * digits inside it ("440 kJ", "Ea") in a left-to-right one, so "שיא 440 kJ" never shows as "kJ 440".
+ */
+export const bidi = (s: string) =>
+  /[\u0590-\u05FF]/.test(s) ? `\u2067${s.replace(/[A-Za-z0-9Δ][A-Za-z0-9Δ°.=+\-−\s]*[A-Za-z0-9°]|[A-Za-z0-9]/g, (m) => `\u2066${m}\u2069`)}\u2069` : s;
+
 // ---------------------------------------------------------------- card
 
 export class Card {
@@ -42,6 +49,7 @@ export class Card {
     const head = el('div', 'card-head', this.el);
     el('span', 'card-no', head, String(no));
     el('div', 'card-say', head, he(say));
+    el('span', 'card-from', head, 'מאיפה?');
     this.body = el('div', 'card-body', this.el);
   }
 
@@ -274,6 +282,90 @@ export class Card {
     });
     show(t, rs, pos, 0.3);
     return w;
+  }
+
+  /** columns of terms with a sum under each (reactants orange on the left, products blue on the right) */
+  cols(t: TL, cols: { title: string; cls: 'r' | 'p' | ''; rows: string[]; sum?: string }[], pos: Pos = '>'): HTMLElement {
+    const w = el('div', 'c-cols', this.body);
+    w.dir = 'ltr';
+    const parts: HTMLElement[] = [];
+    for (const c of cols) {
+      const col = el('div', `cl-col ${c.cls}`, w);
+      el('div', 'cl-title', col, he(c.title)).dir = 'rtl';
+      for (const r of c.rows) el('div', 'cl-row', col, tex(r));
+      if (c.sum) el('div', 'cl-sum', col, tex(c.sum));
+      parts.push(col);
+    }
+    show(t, parts, pos, 0.3);
+    return w;
+  }
+
+  /**
+   * The energy diagram: reactants, the peak and the products as bars at their energies, the curve between them,
+   * Ea as an arrow from the reactants up to the peak, ΔH as an arrow from reactants to products (red), and an optional
+   * dashed lower peak for a catalyst. Numbers are labels from the engine; positions only use them to draw.
+   */
+  levels(
+    t: TL,
+    o: { R: number; P: number; peak: number; cat?: number; lR: string; lP: string; lPeak: string; lCat?: string; ea?: string; eaRev?: string; dH?: string; eaCat?: string },
+    pos: Pos = '>',
+  ): HTMLElement {
+    const W = 600;
+    const H = 300;
+    const lo = Math.min(0, o.R, o.P);
+    const hi = o.peak + (o.peak - lo) * 0.12;
+    const y = (e: number) => 262 - ((e - lo) / (hi - lo || 1)) * 222;
+    const yR = y(o.R);
+    const yP = y(o.P);
+    const yK = y(o.peak);
+    const NS = 'http://www.w3.org/2000/svg';
+    const wrap = el('div', 'c-levels', this.body);
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    wrap.appendChild(svg);
+    const node = (tag: string, attrs: Record<string, string | number>, text?: string) => {
+      const e = document.createElementNS(NS, tag);
+      for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v));
+      if (text != null) e.textContent = text;
+      svg.appendChild(e);
+      return e;
+    };
+    node('defs', {}).innerHTML =
+      '<marker id="lv-a" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>';
+    node('text', { x: 16, y: 22, class: 'lv-axis' }, bidi('אנרגיה ↑'));
+    const base: SVGElement[] = [
+      node('line', { x1: 70, x2: 190, y1: yR, y2: yR, class: 'lv-bar r' }),
+      node('line', { x1: 410, x2: 530, y1: yP, y2: yP, class: 'lv-bar p' }),
+      node('path', { d: `M190,${yR} C250,${yR} 250,${yK} 300,${yK} C350,${yK} 350,${yP} 410,${yP}`, class: 'lv-curve' }),
+      node('text', { x: 130, y: yR + 22, class: 'lv-lab r', 'text-anchor': 'middle' }, bidi(o.lR)),
+      node('text', { x: 470, y: yP + 22, class: 'lv-lab p', 'text-anchor': 'middle' }, bidi(o.lP)),
+      node('text', { x: 300, y: yK - 10, class: 'lv-lab', 'text-anchor': 'middle' }, bidi(o.lPeak)),
+    ];
+    show(t, base as unknown as Element[], pos, 0.12);
+    if (o.cat != null) {
+      const yC = y(o.cat);
+      const c = [
+        node('path', { d: `M190,${yR} C250,${yR} 250,${yC} 300,${yC} C350,${yC} 350,${yP} 410,${yP}`, class: 'lv-curve cat' }),
+        node('text', { x: 300, y: yC + 20, class: 'lv-lab cat', 'text-anchor': 'middle' }, bidi(o.lCat ?? '')),
+      ];
+      show(t, c as unknown as Element[], '>', 0.1);
+    }
+    const arrows: SVGElement[] = [];
+    const lab = (x: number, yy: number, txt: string, cls: string, anchor: string) => node('text', { x, y: yy, class: `lv-lab ${cls}`, 'text-anchor': anchor }, bidi(txt));
+    const up = (x: number, y0: number, y1: number, cls: string) => node('line', { x1: x, x2: x, y1: y0, y2: y1, class: `lv-arrow ${cls}`, 'marker-end': 'url(#lv-a)' });
+    const guide = (x0: number, x1: number, yy: number) => node('line', { x1: x0, x2: x1, y1: yy, y2: yy, class: 'lv-guide' });
+    // Ea arrows stand over the bars, with a dotted line to the peak; labels beside them, never on a curve
+    const both = !!o.ea && !!o.eaCat && o.cat != null;
+    if (o.ea) arrows.push(guide(150, 300, yK), up(150, yR, yK, 'ea'), both ? lab(157, yK + 18, o.ea, 'ea', 'start') : lab(143, (yR + yK) / 2 + 5, o.ea, 'ea', 'end'));
+    if (o.eaRev) arrows.push(guide(300, 450, yK), up(450, yP, yK, 'ea'), lab(457, (yP + yK) / 2 + 5, o.eaRev, 'ea', 'start'));
+    if (o.eaCat && o.cat != null) {
+      const yC = y(o.cat);
+      const x = both ? 110 : 150;
+      arrows.push(guide(x, 300, yC), up(x, yR, yC, 'cat'), lab(x - 7, (yR + yC) / 2 + (both ? 18 : 5), o.eaCat, 'cat', 'end'));
+    }
+    if (o.dH) arrows.push(guide(190, 560, yR), up(560, yR, yP, 'dh'), lab(552, (yR + yP) / 2 + 5, o.dH, 'dh', 'end'));
+    if (arrows.length) show(t, arrows as unknown as Element[], '>', 0.15);
+    return wrap;
   }
 
   /** a small table (rows of cells, first row is the header) */

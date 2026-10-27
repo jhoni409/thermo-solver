@@ -7,14 +7,15 @@ import { parse, InputError, EXAMPLE, type Problem } from '../engine/parse';
 import { solve } from '../engine/solve';
 import { statement, type Seg } from '../engine/statement';
 import { textLines } from '../engine/text';
-import { generate, fromId, GEN_KINDS } from '../engine/generate';
+import { generate, fromId, generateForTopic, kindOfType } from '../engine/generate';
 import { LIBRARY, byId, type LibProblem } from '../library/problems';
 import { lessonOf, type Step } from '../lesson/lessons';
 import { Board, STAGE_HE } from '../lesson/board';
 import { topicById, topicOfType } from '../learn/topics';
 import { conceptOf } from '../learn/concepts';
+import { PHRASES } from '../learn/phrases';
 import { markConcept, markSolved, setLast, dueItems, load } from '../learn/progress';
-import { el, he, tex } from './dom';
+import { el, he, tex, fitMath } from './dom';
 import { Player, reducedMotion } from './player';
 import { renderHome, renderTopic, renderDict, type Nav } from './home';
 import { renderPractice, type PracticeQ } from './practice';
@@ -31,6 +32,7 @@ interface Lesson {
   ask?: string;
   meta?: Meta;
   topic?: string;
+  kind?: string; // the solution type (for "a new one of the same kind")
   onEnd?: () => void;
 }
 
@@ -89,12 +91,44 @@ export function startApp(root: HTMLElement) {
   const qBox = el('section', 'q-box', side);
   const qHead = el('div', 'side-h', qBox, 'השאלה');
   const qBody = el('div', 'q-body', qBox);
+  const qTools = el('div', 'q-tools', qBox);
+  const qWords = el('button', 'q-orig', qTools, 'במילים אחרות ↻');
+  const qOrig = el('button', 'q-orig', qTools, 'השאלה המקורית מהבגרות');
   const stepsBox = el('nav', 'steps-box', side);
   el('div', 'side-h', stepsBox, 'הדרך');
   const stepList = el('ol', 'step-list', stepsBox);
   const boardWrap = el('div', 'board-wrap', main);
   const board = new Board(boardWrap);
   const errBox = el('div', 'err-box', boardWrap);
+  window.addEventListener('resize', () => fitMath(qBody));
+
+  // ---------------- "מאיפה זה?": tap a card → the earlier lines and the givens that hold its numbers light up
+  const ROWS = '.c-line, .c-math, .eq-r, .cl-row, .cl-sum, .c-verdict, .sum-box, .c-grid td, .dc-m, .chip, .rule-row';
+  const numbers = (e: Element) => {
+    const out = new Set<string>();
+    const w = document.createTreeWalker(e, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode())
+      for (const m of (n.textContent ?? '').matchAll(/\d+(?:\.\d+)?/g)) if (m[0].replace('.', '').replace(/^0+/, '').length >= 2) out.add(m[0]);
+    return out;
+  };
+  const clearTrace = () => document.querySelectorAll('.src-hl, .trace-me').forEach((e) => e.classList.remove('src-hl', 'trace-me'));
+  board.flow.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('.pd-opt')) return;
+    const card = target.closest<HTMLElement>('.card');
+    if (!card) return;
+    const again = card.classList.contains('trace-me');
+    clearTrace();
+    if (again) return;
+    const want = numbers(card.querySelector('.card-body')!);
+    card.classList.add('trace-me');
+    const hit = (r: Element) => [...numbers(r)].some((n) => want.has(n)) && r.classList.add('src-hl');
+    for (const c of board.flow.querySelectorAll('.card')) {
+      if (c === card) break;
+      c.querySelectorAll(ROWS).forEach(hit);
+    }
+    qBody.querySelectorAll('.given, .m').forEach(hit);
+  });
   errBox.hidden = true;
 
   // ---------------- bottom: why?, where we are, prev / auto / next
@@ -128,12 +162,27 @@ export function startApp(root: HTMLElement) {
     'pre',
     '',
     help,
-    `rxn: N2(g) + 3H2(g) -> 2NH3(g)     (-> →)
+    `rxn: N2(g) + 3H2(g) -> 2NH3(g)     (מקדם יכול להיות 1/2)
 dH = -92 kJ            (ΔH° של התגובה כפי שנכתבה)
 dS = -199 J/K          (ΔS° של המערכת)
+dS total = 10.4 J/K    dS surr = 792 J/K
 T = 298 K   |   T = 25 C   |   T = room
-decimals = 1
-ask: spontaneous`,
+S NH3(g) = 192.8       (S° למול; x = לא ידוע)
+dHf NH3(g) = -45.6     (ΔH°f למול; x = לא ידוע)
+m CH4 = 8 g   M CH4 = 16 g/mol   n CH4 = 0.5 mol
+q = 445 kJ released | absorbed
+new: 2NH3(g) -> N2(g) + 3H2(g)
+options = -46, -138
+bonds CH4: 4 C-H      bond C-H = 413 | x
+E reactants = 50 kJ   E products = 20 kJ
+E peak = 120 kJ       E peak catalyst = 90 kJ
+sign dH < 0   sign dS sys > 0   sign dS total > 0
+find: dH | dS sys | dS surr | spont | compare | any-T | catalyst
+observed: no reaction
+ask: spontaneous | back | signs | kinetic | dS-sign | dS
+     S-unknown | dH-formation | dHf-unknown | heat
+     mass-for-heat | dH-from-q | dH-new | phase-compare
+     dH-bonds | bond-unknown | diagram`,
   ).dir = 'ltr';
   const dlgErr = el('div', 'dlg-err', dlgIn);
   const dlgBtns = el('div', 'dialog-btns', dlgIn);
@@ -209,15 +258,28 @@ ask: spontaneous`,
     el('div', 'dialog-h', origIn, 'השאלה המקורית');
     for (const f of cur.meta.original) {
       const img = el('img', 'orig-img', origIn) as HTMLImageElement;
-      img.src = `${import.meta.env.BASE_URL}exam-graphs/${f}`;
+      img.src = `${import.meta.env.BASE_URL}exam-pages/${f}`;
       img.alt = 'השאלה המקורית';
     }
     orig.hidden = false;
   };
+  qOrig.onclick = () => btnOrig.click();
+  // the same question in other exam wordings: every marked phrase steps to its next wording from the dictionary
+  qWords.onclick = () => {
+    qBody.querySelectorAll<HTMLElement>('.phr[data-key]').forEach((e) => {
+      const opts = [e.dataset.orig!, ...(PHRASES[e.dataset.key!]?.also ?? []).filter((a) => a !== e.dataset.orig)];
+      const k = (parseInt(e.dataset.k ?? '0', 10) + 1) % opts.length;
+      e.dataset.k = String(k);
+      e.innerHTML = he(opts[k]);
+      e.classList.toggle('reworded', k > 0);
+    });
+    fitMath(qBody);
+  };
   btnMore.onclick = () => {
     closeAll();
-    const k = GEN_KINDS.find((g) => g.topic === cur?.topic);
-    if (k) go(`#${generate(k.kind, newSeed()).id}`);
+    const k = kindOfType(cur?.kind ?? '');
+    const g = k ? generate(k, newSeed()) : cur?.topic ? generateForTopic(cur.topic, newSeed()) : null;
+    if (g) go(`#${g.id}`);
   };
 
   // ---------------- state
@@ -274,9 +336,12 @@ ask: spontaneous`,
           e.classList.add('given');
           e.dataset.key = s.key;
         }
+        if (s.phrase) e.dataset.orig = s.text ?? '';
       }
     }
     if (ask) el('div', 'st-line st-ask', qBody, he(ask));
+    qWords.hidden = !qBody.querySelector('.phr[data-key]');
+    fitMath(qBody);
   }
 
   let items: HTMLElement[] = [];
@@ -300,6 +365,8 @@ ask: spontaneous`,
 
   function onStep(i: number) {
     if (!cur) return;
+    clearTrace();
+    board.flow.querySelectorAll<HTMLElement>('.card-say').forEach(fitMath);
     const s = cur.steps[i];
     items.forEach((li, k) => {
       li.classList.toggle('done', k < i);
@@ -328,7 +395,8 @@ ask: spontaneous`,
     errBox.hidden = true;
     qHead.textContent = 'השאלה';
     btnOrig.hidden = !l.meta?.original;
-    btnMore.hidden = !GEN_KINDS.some((g) => g.topic === l.topic) || !l.meta;
+    qOrig.hidden = !l.meta?.original;
+    btnMore.hidden = !kindOfType(l.kind ?? '');
     player?.destroy();
     renderQuestion(l.lines, l.ask);
     renderSteps(l.steps);
@@ -364,6 +432,7 @@ ask: spontaneous`,
         ask: b.ask,
         meta,
         topic,
+        kind: b.sol.type,
         onEnd: () => markSolved(meta.id),
       });
       returnTo = back ?? (topic ? `#t:${topic}` : '');
@@ -377,7 +446,7 @@ ask: spontaneous`,
     try {
       const b = build(input);
       setCrumb(['שאלה מוקלדת']);
-      showLesson({ title: 'שאלה מוקלדת', steps: b.steps, lines: b.lines, ask: b.ask });
+      showLesson({ title: 'שאלה מוקלדת', steps: b.steps, lines: b.lines, ask: b.ask, kind: b.sol.type });
       return null;
     } catch (e) {
       if (e instanceof InputError) return e;
@@ -401,8 +470,8 @@ ask: spontaneous`,
       // first the library questions not practised yet, then endless new ones
       const fresh = LIBRARY.filter((p) => p.topic === topic && !load().items[p.id]);
       if (fresh.length) return toQ(fresh[0]);
-      const k = GEN_KINDS.find((g) => g.topic === topic);
-      return k ? toQ(generate(k.kind, newSeed() + i++)) : null;
+      const g = generateForTopic(topic, newSeed() + i++);
+      return g ? toQ(g) : null;
     };
   }
 

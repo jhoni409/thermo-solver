@@ -79,7 +79,7 @@ export function fmt(f: Frac, opt: FmtOpts = {}): Fmt {
   if (f.isInt()) return { s: f.n.toString(), approx: false };
   const sig = opt.sig ?? 4;
   const ex = exactDecimal(f);
-  if (ex && sigCount(ex) <= Math.max(sig, 5)) return { s: ex, approx: false };
+  if (ex && sigCount(ex) <= Math.max(sig, 7)) return { s: ex, approx: false };
   const e = floorLog10(f);
   const k = sig - 1 - e;
   if (k <= 0) return { s: roundScaled(f, 0).toString(), approx: true };

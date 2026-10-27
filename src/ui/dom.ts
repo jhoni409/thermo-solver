@@ -29,7 +29,18 @@ export function he(s: string): string {
     .map((part) =>
       part.length > 2 && part.startsWith('$') && part.endsWith('$')
         ? `<bdi dir="ltr" class="m">${tex(part.slice(1, -1))}</bdi>`
-        : esc(part).replace(/\[\[(.+?)\]\]/g, '<span class="blank">$1</span>'),
+        : esc(part).replace(/\[\[(.+?)\]\]/g, '<span class="blank"><bdi>$1</bdi></span>'), // <bdi>: "34.1 kJ" keeps its order
     )
     .join('');
+}
+
+/** a math piece wider than its box (a long equation, a table) is scaled down to fit, instead of being cut */
+export function fitMath(box: HTMLElement) {
+  const avail = box.clientWidth;
+  if (!avail) return;
+  for (const m of box.querySelectorAll<HTMLElement>('.m')) {
+    m.style.fontSize = '';
+    const w = m.scrollWidth;
+    if (w > avail) m.style.fontSize = `${Math.max(0.55, Math.floor((avail / w) * 100) / 100)}em`;
+  }
 }

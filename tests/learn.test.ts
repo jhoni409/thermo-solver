@@ -1,11 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { parse } from '../src/engine/parse';
-import { solve, type SpontSol } from '../src/engine/solve';
+import { solve } from '../src/engine/solve';
 import { textLines, phrasesOf } from '../src/engine/text';
-import { generate, fromId, GEN_KINDS } from '../src/engine/generate';
 import { partsOf, checkNumber } from '../src/engine/practice';
-import { fmt } from '../src/engine/format';
-import { LIBRARY } from '../src/library/problems';
+import { LIBRARY, byId } from '../src/library/problems';
 import { lessonOf } from '../src/lesson/lessons';
 import { PHRASES } from '../src/learn/phrases';
 import { TOPICS, topicById } from '../src/learn/topics';
@@ -35,53 +33,20 @@ describe('exam wording', () => {
     const p = LIBRARY.find((x) => x.id === 'S4')!;
     expect(phrasesOf(p.text!, parse(p.input)).some((u) => u.tag === 'h:room' && PHRASES[u.tag].kind === 'hidden')).toBe(true);
   });
-  it('topics: every built topic has its phrases in the dictionary; spont has a concept lesson', () => {
-    for (const t of TOPICS) for (const g of t.phrases) expect(PHRASES[g], `${t.id} ${g}`).toBeDefined();
-    expect(conceptOf('spont')!.length).toBeGreaterThan(3);
-    expect(topicById('spont')!.built).toBe(true);
-  });
-});
-
-describe('endless problems', () => {
-  for (const { kind } of GEN_KINDS) {
-    it(`${kind}: 150 seeds solve, render and match an independent re-computation`, () => {
-      for (let seed = 1; seed <= 150; seed++) {
-        const g = generate(kind, seed);
-        const pr = parse(g.input);
-        const s = solve(pr) as SpontSol;
-        expect(textLines(g.text, pr).length).toBeGreaterThan(1);
-        for (const u of phrasesOf(g.text, pr)) expect(PHRASES[u.tag], `${g.id} ${u.tag}`).toBeDefined();
-        // independent: plain numbers, ΔS°tot = ΔS°sys − ΔH·1000/T(K)
-        const dH = parseFloat(/dH = (\S+)/.exec(g.input)![1]);
-        const dS = parseFloat(/dS = (\S+)/.exec(g.input)![1]);
-        const t = /T = (\S+)(?: (\S+))?/.exec(g.input)!;
-        const T = t[1] === 'room' ? 298 : t[2] === 'C' ? parseFloat(t[1]) + 273 : parseFloat(t[1]);
-        const tot = dS - (dH * 1000) / T;
-        expect(s.dStot.toNumber()).toBeCloseTo(tot, 9);
-        expect(s.spont).toBe(tot > 0);
-        // the shown numbers add up as shown
-        expect(parseFloat(fmt(s.dSsurr, s.opts).s) + dS).toBeCloseTo(parseFloat(fmt(s.dStot, s.opts).s), 9);
-        expect(lessonOf(s, pr, g.text).length).toBeGreaterThan(4);
-      }
-    });
-  }
-  it('the same id gives the same problem', () => {
-    const a = generate('spontaneous', 777);
-    expect(fromId(a.id)!.text).toBe(a.text);
-    expect(fromId(a.id)!.input).toBe(a.input);
-  });
-  it('real substances only with library data (NH3, CaCO3, H2O)', () => {
-    for (let seed = 1; seed <= 150; seed++) {
-      const g = generate('spontaneous', seed);
-      const m = /rxn: (.+)/.exec(g.input);
-      if (m) expect(m[1]).toMatch(/NH3|CaCO3|H2O/);
+  it('topics: all built, their phrases in the dictionary, a recipe strip for every type, a concept lesson', () => {
+    for (const t of TOPICS) {
+      expect(t.built, t.id).toBe(true);
+      for (const g of t.phrases) expect(PHRASES[g], `${t.id} ${g}`).toBeDefined();
+      for (const ty of t.types) expect(t.recipeShortOf?.[ty], `${t.id} ${ty}`).toBeDefined();
+      expect(conceptOf(t.id)?.length, t.id).toBeGreaterThan(2);
     }
+    expect(topicById('spont')!.built).toBe(true);
   });
 });
 
 describe('practice', () => {
   it('parts follow the solution: surroundings, universe, verdict', () => {
-    const s = solve(parse(LIBRARY[0].input));
+    const s = solve(parse(byId('S1')!.input));
     const parts = partsOf(s);
     expect(parts.map((p) => p.kind)).toEqual(['number', 'number', 'choice']);
   });

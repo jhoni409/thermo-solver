@@ -7,7 +7,7 @@ import { textLines } from '../engine/text';
 import { statement, type Seg } from '../engine/statement';
 import { partsOf, checkNumber, answerText, type Part } from '../engine/practice';
 import { record } from '../learn/progress';
-import { el, he, tex } from './dom';
+import { el, he, tex, fitMath } from './dom';
 
 export interface PracticeQ {
   id: string;
@@ -35,6 +35,7 @@ export function questionLines(parent: HTMLElement, q: { input: string; text?: st
     const ask = statement(problem).ask;
     if (ask) el('div', 'st-line st-ask', parent, he(ask));
   }
+  fitMath(parent);
 }
 
 /** one practice question on the page; `next` gives the following one (or null when the queue is empty) */
