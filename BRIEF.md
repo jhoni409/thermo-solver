@@ -130,8 +130,8 @@ All topics are √ in the 2026 מיקוד (p. 8: energy, 37381; p. 16: entropy, 
 6. ΔS°יקום = ΔS°מערכת + ΔS°סביבה → spontaneous or not (second law)
 7. Backwards from ΔS°יקום to ΔS°סביבה, ΔS°מערכת or ΔH°
 8. Signs without calculating: exo / endo, spontaneous or not
-9. Spontaneous but does not happen: activation energy, heating, catalyst (rules pending)
-10. ΔH° with a liquid vs a gaseous product (rules pending)
+9. Spontaneous but does not happen: activation energy, heating, catalyst (T16)
+10. ΔH° with a liquid vs a gaseous product (T17)
 
 **Out:** ΔG (not in the מיקוד, not in the course). Not required by the מיקוד: comparing S° of different
 substances, ΔS°יקום = 0, the turning temperature, the temperature range of spontaneity.
@@ -217,6 +217,10 @@ catalysis; ch. 16 Thermodynamics.
 - **T14:** ΔS°סביבה = −ΔH°/T, with ΔH° in J (kJ × 1000) and T in K: T = t(°C) + 273 (the course's 1327°C
   gives exactly 1600 K). Room temperature = 298 K (25°C).
 - **T15:** second law: ΔS°יקום = ΔS°מערכת + ΔS°סביבה. ΔS°יקום > 0 → ספונטני, < 0 → לא ספונטני.
+- **T16:** ΔS°יקום > 0 means the reaction *can* happen, not that it is fast. If Ea is high, it does not
+  happen at room temperature; heating or a catalyst makes it happen.
+- **T17:** melting and boiling take in heat (ΔH > 0); freezing and condensing give it out (ΔH < 0). So the
+  same reaction gives out more heat with a liquid product than with a gaseous one: its ΔH° is more negative.
 
 Anything else (Lewis structures, heat of solution of a specific salt, specific heats not given in the
 question, tabulated data) is **not** a rule: the question must give it.
