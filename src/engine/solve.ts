@@ -2,7 +2,7 @@
 
 import { Frac, F, ZERO } from './frac';
 import { exactDecimal, type FmtOpts } from './format';
-import { InputError, spKey, type Problem, type Reaction, type Species, type Temp, type Sign, type SignKey, type BondUse } from './parse';
+import { InputError, spKey, type Problem, type Reaction, type Species, type Temp, type Sign, type SignKey, type BondUse, type Change, type Claim } from './parse';
 import { gasMoles, isGas, isStdElement, STATE_RANK } from './chem';
 
 export interface Recog {
@@ -681,9 +681,40 @@ function diagram(p: Problem): DiagramSol {
   };
 }
 
+// ---------------------------------------------------------------- T18: the collision model
+
+/**
+ * T18: heating or a spark gives the particles more kinetic energy (more of them reach Ea; Ea stays);
+ * a catalyst lowers Ea (T8; the particles' energy stays). Either way more particles reach Ea. ΔH° never changes.
+ */
+export const CLAIM_TRUE: Record<Change, Record<Claim, boolean>> = {
+  heat: { 'Ea-down': false, 'KE-up': true, 'more-reach': true, 'dH-change': false },
+  spark: { 'Ea-down': false, 'KE-up': true, 'more-reach': true, 'dH-change': false },
+  catalyst: { 'Ea-down': true, 'KE-up': false, 'more-reach': true, 'dH-change': false },
+};
+
+export interface CollisionSol {
+  type: 'collision';
+  recog: Recog;
+  rxn?: Reaction;
+  change: Change;
+  claims: { label: string; claim: Claim; ok: boolean }[];
+  correct: number; // the one true statement
+  opts: FmtOpts;
+}
+
+function collision(p: Problem): CollisionSol {
+  if (!p.change) throw new InputError('חסר מה עושים לתגובה: חימום, ניצוץ או זרז', 'change: heat');
+  if (!p.statements?.length) throw new InputError('חסרים ההיגדים', 'statement I: Ea-down\nstatement II: KE-up');
+  const claims = p.statements.map((st) => ({ ...st, ok: CLAIM_TRUE[p.change!][st.claim] }));
+  const ok = claims.filter((c) => c.ok);
+  if (ok.length !== 1) throw new InputError('צריך היגד נכון אחד בדיוק');
+  return { type: 'collision', recog: { type: 'תורת ההתנגשויות: איזה היגד נכון?' }, rxn: p.rxn, change: p.change, claims, correct: claims.indexOf(ok[0]), opts: {} };
+}
+
 // ---------------------------------------------------------------- dispatch
 
-export type Solution = SpontSol | BackSol | SignsSol | KineticSol | DSignSol | PRSol | HeatSol | DHNewSol | PhaseSol | BondsSol | DiagramSol;
+export type Solution = SpontSol | BackSol | SignsSol | KineticSol | DSignSol | PRSol | HeatSol | DHNewSol | PhaseSol | BondsSol | DiagramSol | CollisionSol;
 
 export function solve(p: Problem): Solution {
   switch (p.ask) {
@@ -721,5 +752,7 @@ export function solve(p: Problem): Solution {
       return bonds(p, true);
     case 'diagram':
       return diagram(p);
+    case 'collision':
+      return collision(p);
   }
 }

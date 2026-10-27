@@ -296,19 +296,34 @@ export const PHASES: [string, string, string][] = [
 /** the other states of a formula that the bank has */
 export const statesOf = (f: string): string[] => ['s', 'l', 'g'].filter((s) => SPECIES[`${f}(${s})`]);
 
-// ---------------------------------------------------------------- bond enthalpies (kJ/mol), as in the library
+// ---------------------------------------------------------------- bond enthalpies (kJ/mol)
+// Two sets, one per question, never mixed in one question.
 
-export const BOND_E: Record<string, string> = {
-  'H-H': '436',
-  'Cl-Cl': '243',
-  'H-Cl': '432',
-  'C-H': '413',
-  'O=O': '498',
-  'C=O': '799',
-  'O-H': '463',
-  'C-C': '346',
-  'C#C': '835',
-};
+export interface BondSet {
+  id: 'bagrut' | 'openstax';
+  ref: string;
+  E: Record<string, string>;
+}
+
+export const BOND_SETS: BondSet[] = [
+  {
+    id: 'bagrut',
+    ref: 'בגרות 2025 (37381, שאלה 13) ו־PROBLEMS.md',
+    E: { 'H-H': '436', 'Cl-Cl': '243', 'H-Cl': '432', 'C-H': '413', 'O=O': '498', 'C=O': '799', 'O-H': '463', 'C-C': '346', 'C#C': '835' },
+  },
+  {
+    id: 'openstax',
+    ref: 'OpenStax Chemistry 2e, Table 7.2',
+    E: {
+      'H-H': '436', 'C-H': '415', 'N-H': '390', 'O-H': '464', 'H-F': '569', 'H-Cl': '432', 'H-Br': '370', 'H-I': '295',
+      'C-C': '345', 'C=C': '611', 'C#C': '837', 'C-N': '290', 'C#N': '891', 'C-O': '350', 'C=O': '741', 'C#O': '1080',
+      'C-Cl': '330', 'N-N': '160', 'N#N': '946', 'O-O': '140', 'O=O': '498', 'F-F': '160', 'Cl-Cl': '243', 'Br-Br': '190', 'I-I': '150',
+    },
+  },
+];
+
+/** the bagrut set (the library's values) */
+export const BOND_E = BOND_SETS[0].E;
 
 /** the bonds in one molecule */
 export const BONDS_OF: Record<string, [number, string][]> = {
@@ -323,6 +338,25 @@ export const BONDS_OF: Record<string, [number, string][]> = {
   C2H2: [[1, 'C#C'], [2, 'C-H']],
   C3H8: [[2, 'C-C'], [8, 'C-H']],
   C4H10: [[3, 'C-C'], [10, 'C-H']],
+  // OpenStax set only
+  N2: [[1, 'N#N']],
+  NH3: [[3, 'N-H']],
+  N2H4: [[1, 'N-N'], [4, 'N-H']],
+  HF: [[1, 'H-F']],
+  F2: [[1, 'F-F']],
+  HBr: [[1, 'H-Br']],
+  Br2: [[1, 'Br-Br']],
+  HI: [[1, 'H-I']],
+  I2: [[1, 'I-I']],
+  C2H4: [[1, 'C=C'], [4, 'C-H']],
+  C3H6: [[1, 'C=C'], [1, 'C-C'], [6, 'C-H']],
+  CH3OH: [[3, 'C-H'], [1, 'C-O'], [1, 'O-H']],
+  C2H5OH: [[1, 'C-C'], [5, 'C-H'], [1, 'C-O'], [1, 'O-H']],
+  CH3Cl: [[3, 'C-H'], [1, 'C-Cl']],
+  CCl4: [[4, 'C-Cl']],
+  H2O2: [[2, 'O-H'], [1, 'O-O']],
+  CO: [[1, 'C#O']],
+  HCN: [[1, 'C-H'], [1, 'C#N']],
 };
 
 /** gas reactions whose molecules are all in BONDS_OF */
@@ -348,4 +382,28 @@ export const BOND_RXNS: RealRxn[] = [
   R('C4H10(g) + 3H2(g) -> 4CH4(g)', 'פירוק של בוטאן במימן'),
   R('CO2(g) + 4H2(g) -> CH4(g) + 2H2O(g)', 'הפקת מתאן מפחמן דו־חמצני'),
   R('4HCl(g) + O2(g) -> 2Cl2(g) + 2H2O(g)', 'חמצון של מימן כלורי'),
+  // these need bonds that only the OpenStax set has
+  R('N2(g) + 3H2(g) -> 2NH3(g)', 'הפקת אמוניה'),
+  R('H2(g) + F2(g) -> 2HF(g)', 'תגובה בין מימן לפלואור'),
+  R('H2(g) + Br2(g) -> 2HBr(g)', 'תגובה בין מימן לברום'),
+  R('H2(g) + I2(g) -> 2HI(g)', 'תגובה בין מימן ליוד'),
+  R('C2H4(g) + H2(g) -> C2H6(g)', 'הוספת מימן לאתן'),
+  R('C3H6(g) + H2(g) -> C3H8(g)', 'הוספת מימן לפרופן'),
+  R('C2H4(g) + H2O(g) -> C2H5OH(g)', 'הפקת אתנול'),
+  R('CO(g) + 2H2(g) -> CH3OH(g)', 'הפקת מתנול'),
+  R('CH4(g) + Cl2(g) -> CH3Cl(g) + HCl(g)', 'הכלרה של מתאן'),
+  R('CH4(g) + 4Cl2(g) -> CCl4(g) + 4HCl(g)', 'הכלרה של מתאן'),
+  R('N2H4(g) + O2(g) -> N2(g) + 2H2O(g)', 'שרפה של הידרזין', 'comb'),
+  R('2H2O2(g) -> 2H2O(g) + O2(g)', 'פירוק של מימן על־חמצני'),
+  R('CH4(g) + NH3(g) -> HCN(g) + 3H2(g)', 'הפקת מימן ציאנידי'),
+  R('4NH3(g) + 3O2(g) -> 2N2(g) + 6H2O(g)', 'שרפה של אמוניה', 'comb'),
+  R('CO(g) + H2O(g) -> CO2(g) + H2(g)', 'תגובת גז המים'),
+  R('CH4(g) + H2O(g) -> CO(g) + 3H2(g)', 'הפקת מימן ממתאן'),
+  R('2CO(g) + O2(g) -> 2CO2(g)', 'שרפה של פחמן חד־חמצני', 'comb'),
+  R('C2H4(g) + 3O2(g) -> 2CO2(g) + 2H2O(g)', 'שרפה של אתן', 'comb'),
+  R('2CH3OH(g) + 3O2(g) -> 2CO2(g) + 4H2O(g)', 'שרפה של מתנול', 'comb'),
+  R('C2H5OH(g) + 3O2(g) -> 2CO2(g) + 3H2O(g)', 'שרפה של אתנול', 'comb'),
 ];
+
+/** the bonds a reaction needs */
+export const bondsIn = (x: RealRxn) => [...new Set([...x.R, ...x.P].flatMap(([, k]) => BONDS_OF[k.replace(/\(.+\)$/, '')].map(([, b]) => b)))];

@@ -224,6 +224,12 @@ catalysis; ch. 16 Thermodynamics.
   happen at room temperature; heating or a catalyst makes it happen.
 - **T17:** melting and boiling take in heat (ΔH > 0); freezing and condensing give it out (ΔH < 0). So the
   same reaction gives out more heat with a liquid product than with a gaseous one: its ΔH° is more negative.
+- **T18 (added 2026-10-27, the user approved):** collision model (OpenStax *Chemistry 2e* §12.5, checked):
+  a reaction happens when reactant particles collide with enough energy (at least Ea) and the right
+  orientation; they form an activated complex (תצמיד משופעל). Heating (or a spark) gives the particles more
+  kinetic energy, so more of them have energy ≥ Ea; it does **not** change Ea. A catalyst lowers Ea (T8), so
+  at the same temperature more particles reach it. Neither changes ΔH°. (Bagrut 37282: 2021 מועד נבצרים 1א iii,
+  2023 2ב.)
 
 Anything else (Lewis structures, heat of solution of a specific salt, specific heats not given in the
 question, tabulated data) is **not** a rule: the question must give it.
@@ -343,7 +349,8 @@ ask: dS-sign | dS | S-unknown | spontaneous | from-total | signs | hess | dH-bon
 - **Library:** the examples in `PROBLEMS.md`, plus new examples for the entropy types. Grouped by type.
   (The user's course exercises are not library entries; see §4.) S° and ΔH°f values for real substances
   come from the CRC data in the Python package `chemicals` (S0g/S0l/S0s, Hfg/Hfl/Hfs), rounded to 1
-  decimal; textbook sites are blocked from the cloud session.
+  decimal. Bond enthalpies: two sets, one per question, never mixed: the bagrut's values (2025 37381 q.13
+  and PROBLEMS.md) and OpenStax *Chemistry 2e* Table 7.2 (read from openstax.org on 2026-10-27).
 - **∞ generator:** for every type, seeded, with ids like `g-hess-1234` that work as deep links.
   It must only make problems whose numbers are clean (exact decimals) and whose chemistry is real:
   use reactions and data from the library, and scale or reverse them.

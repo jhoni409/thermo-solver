@@ -74,6 +74,8 @@ export function partsOf(sol: Solution): Part[] {
       return [num('\\Sigma_{\\text{נשברים}}', 'kJ', sol.sumB!), num('\\Sigma_{\\text{נוצרים}}', 'kJ', sol.sumF!), num(DH, 'kJ', sol.dH)];
     case 'bond-unknown':
       return [num(bondTex(sol.x!.bond), 'kJ/mol', sol.x!.v)];
+    case 'collision':
+      return [choice('ההיגד הנכון:', sol.claims.map((c) => `היגד ${c.label}`), sol.correct)];
     case 'diagram':
       return [
         num(DH, 'kJ', sol.dH),

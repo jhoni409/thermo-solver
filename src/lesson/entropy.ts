@@ -2,7 +2,8 @@
 // spontaneous but not happening (T16), and the sign of ΔS° from the equation (T9).
 
 import type { Problem, Species, SignKey, Sign } from '../engine/parse';
-import type { SpontSol, BackSol, SignsSol, KineticSol, DSignSol, PR } from '../engine/solve';
+import type { SpontSol, BackSol, SignsSol, KineticSol, DSignSol, CollisionSol, PR } from '../engine/solve';
+import { claimHe, CHANGE_SUBJ } from '../engine/statement';
 import { F, type Frac } from '../engine/frac';
 import { fmt, type FmtOpts } from '../engine/format';
 import { speciesTex, isGas } from '../engine/chem';
@@ -410,6 +411,84 @@ export function kineticLesson(sol: KineticSol, p: Problem): Step[] {
     },
   });
   steps.push(exam([sol.spont ? 'זרז מוריד את אנרגיית השפעול ולכן [[יעזור]].' : `זרז לא משנה את $${TOT}$, ולכן הוא [[לא יעזור]]: התגובה נשארת לא ספונטנית.`]));
+  return steps;
+}
+
+// ---------------------------------------------------------------- T18: which statement is right (the collision model)
+
+const T18_ROWS = [
+  'חימום או ניצוץ ← האנרגייה הקינטית של החלקיקים גדלה; $E_a$ לא משתנה',
+  'זרז ← $E_a$ קטנה; האנרגייה של החלקיקים לא משתנה',
+  'בשני המקרים ← יותר חלקיקים מגיעים ל־$E_a$ ← יותר התנגשויות יעילות',
+];
+
+/** why a statement is right or wrong, in one line */
+function claimWhy(claim: CollisionSol['claims'][number], heat: boolean): string {
+  switch (claim.claim) {
+    case 'Ea-down':
+      return claim.ok ? 'נכון: הזרז מקטין את $E_a$.' : 'לא נכון: חימום או ניצוץ לא משנים את $E_a$. רק זרז מקטין אותה.';
+    case 'KE-up':
+      return claim.ok ? 'נכון: לחלקיקים יש יותר אנרגייה קינטית, אז יותר התנגשויות מגיעות ל־$E_a$.' : 'לא נכון: זרז לא משנה את האנרגייה של החלקיקים. הוא מקטין את $E_a$.';
+    case 'more-reach':
+      return heat ? 'נכון: לחלקיקים יש יותר אנרגייה, אז יותר מהם מגיעים ל־$E_a$ ויוצרים תצמידים משופעלים.' : 'נכון: $E_a$ קטנה, אז יותר חלקיקים מגיעים אליה ויוצרים תצמידים משופעלים.';
+    case 'dH-change':
+      return `לא נכון: $${DH}$ תלוי רק במגיבים ובתוצרים. הוא לא משתנה.`;
+  }
+}
+
+export function collisionLesson(sol: CollisionSol, p: Problem): Step[] {
+  const heat = sol.change !== 'catalyst';
+  const subj = CHANGE_SUBJ[sol.change];
+  const right = sol.claims[sol.correct];
+  const steps: Step[] = [identify(p, sol, 'בוחרים היגד ← בודקים כל היגד מול תורת ההתנגשויות', 'רק היגד אחד מתאים לכלל.')];
+  steps.push({
+    stage: 1,
+    title: 'מה צריך לתגובה?',
+    say: 'תגובה קורית רק כשחלקיקים מתנגשים עם אנרגייה של לפחות $E_a$',
+    why: 'ההתנגשות צריכה גם כיוון מתאים. אז נוצר תצמיד משופעל, וממנו התוצרים.',
+    recipe: 0,
+    run: (c, t) => {
+      c.levels(t, { R: 40, P: 10, peak: 120, lR: 'מגיבים', lP: 'תוצרים', lPeak: 'תצמיד משופעל', ea: 'Ea' });
+      c.line(t, '$E_a$ = האנרגייה המינימלית שצריך בהתנגשות', 'dim');
+    },
+  });
+  steps.push({
+    stage: 1,
+    title: `מה ${subj} עושה?`,
+    say: `מה ${subj} משנה?`,
+    why: heat ? 'חימום נותן לחלקיקים אנרגייה. המחסום עצמו, $E_a$, נשאר אותו דבר.' : 'זרז מנמיך את המחסום, $E_a$. האנרגייה של החלקיקים נשארת אותו דבר.',
+    uses: ['h:hot', 'h:spark', 'g:cat'],
+    recipe: 1,
+    predict: { q: `${subj} מקטין את $E_a$?`, options: ['כן', 'לא'], correct: heat ? 1 : 0 },
+    run: (c, t) => {
+      if (heat) c.levels(t, { R: 40, P: 10, peak: 120, lR: 'מגיבים', lP: 'תוצרים', lPeak: 'אותו שיא', ea: 'Ea לא משתנה' });
+      else c.levels(t, { R: 40, P: 10, peak: 120, cat: 75, lR: 'מגיבים', lP: 'תוצרים', lPeak: 'בלי זרז', lCat: 'עם זרז', eaCat: 'Ea קטנה' });
+      c.rule(t, T18_ROWS, heat ? [0, 2] : [1, 2]);
+    },
+  });
+  for (const cl of sol.claims)
+    steps.push({
+      stage: 1,
+      title: `היגד ${cl.label}`,
+      say: `היגד ${cl.label}: נכון או לא?`,
+      why: cl.ok ? 'ההיגד מתאים לכלל.' : 'ההיגד סותר את הכלל: זו הטעות שהשאלה בודקת.',
+      uses: ['a:statement'],
+      cls: cl.ok ? undefined : 'trap',
+      recipe: 2,
+      predict: { q: `״${claimHe(cl.claim, sol.change)}״`, options: ['נכון', 'לא נכון'], correct: cl.ok ? 0 : 1 },
+      run: (c, t) => {
+        c.verdict(t, claimWhy(cl, heat), cl.ok ? 'ok' : 'bad');
+      },
+    });
+  steps.push(
+    exam([
+      `ההיגד הנכון הוא [[${right.label}]].`,
+      heat
+        ? `לפי תורת ההתנגשויות, ${subj} מגדיל את [[האנרגייה הקינטית]] של חלקיקי המגיבים. לכן ל[[יותר חלקיקים]] יש אנרגייה של לפחות $E_a$, יש יותר התנגשויות [[יעילות]] שיוצרות תצמידים משופעלים, והתגובה מתרחשת.`
+        : `לפי תורת ההתנגשויות, הזרז [[מקטין את $E_a$]]. לכן באותה טמפרטורה ל[[יותר חלקיקים]] יש אנרגייה מספקת, יש יותר התנגשויות [[יעילות]] שיוצרות תצמידים משופעלים, והתגובה מתרחשת.`,
+      sol.change === 'heat' ? '$E_a$ [[לא משתנה]] כשמחממים.' : sol.change === 'spark' ? '$E_a$ [[לא משתנה]] בעקבות הניצוץ.' : 'האנרגייה של החלקיקים [[לא משתנה]] כשמוסיפים זרז.',
+    ]),
+  );
   return steps;
 }
 

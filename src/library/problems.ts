@@ -53,7 +53,7 @@ ask: dH-from-q`,
   },
   {
     id: 'P3',
-    title: 'כמה חום בשרפת 8 g מתאן',
+    title: 'כמה חום בשרפת $8\\,\\mathrm{g}$ מתאן',
     group: G.exo,
     topic: 'exo',
     note: PR,
@@ -68,7 +68,7 @@ ask: heat`,
   },
   {
     id: 'P4',
-    title: 'כמה גרם מתאן ל־1335 kJ',
+    title: 'כמה גרם מתאן ל־$1335\\,\\mathrm{kJ}$',
     group: G.exo,
     topic: 'exo',
     note: PR,
@@ -548,7 +548,7 @@ ask: dHf-unknown`,
   // ---------------- spontaneous? (real bagrut first)
   {
     id: 'B22-282-1d',
-    title: 'הבר־בוש: ספונטני ב־298 K?',
+    title: 'הבר־בוש: ספונטני ב־$298\\,\\mathrm{K}$?',
     group: G.spont,
     topic: 'spont',
     note: bag(2022, 37282, 'שאלה 1ג–ד'),
@@ -567,7 +567,7 @@ ask: spontaneous`,
   },
   {
     id: 'B23-282-1e',
-    title: '$\\mathrm{NO_2}$: ספונטני ב־1100 K?',
+    title: '$\\mathrm{NO_2}$: ספונטני ב־$1100\\,\\mathrm{K}$?',
     group: G.spont,
     topic: 'spont',
     note: bag(2023, 37282, 'שאלה 1ה'),
@@ -582,7 +582,7 @@ ask: spontaneous`,
   },
   {
     id: 'B24-282-1a2',
-    title: '$\\mathrm{NO_2}$: ספונטני ב־298 K? (שתי טבלאות)',
+    title: '$\\mathrm{NO_2}$: ספונטני ב־$298\\,\\mathrm{K}$? (שתי טבלאות)',
     group: G.spont,
     topic: 'spont',
     note: bag(2024, 37282, 'שאלה 1א'),
@@ -601,7 +601,7 @@ ask: spontaneous`,
   },
   {
     id: 'B24-282-2a',
-    title: 'מגדל השמש: ספונטני ב־298 K?',
+    title: 'מגדל השמש: ספונטני ב־$298\\,\\mathrm{K}$?',
     group: G.spont,
     topic: 'spont',
     note: bag(2024, 37282, 'שאלה 2א'),
@@ -621,7 +621,7 @@ ask: spontaneous`,
   },
   {
     id: 'B26-282-1c',
-    title: '$\\mathrm{SO_3}$: ספונטני ב־1000 K?',
+    title: '$\\mathrm{SO_3}$: ספונטני ב־$1000\\,\\mathrm{K}$?',
     group: G.spont,
     topic: 'spont',
     note: bag(2026, 37282, 'שאלה 1א–ג'),
@@ -640,7 +640,7 @@ ask: spontaneous`,
   },
   {
     id: 'B21-282-1a',
-    title: 'טיטניום ו־$\\mathrm{CO_2}$: ספונטני ב־298 K?',
+    title: 'טיטניום ו־$\\mathrm{CO_2}$: ספונטני ב־$298\\,\\mathrm{K}$?',
     group: G.spont,
     topic: 'spont',
     note: bag(2021, 37282, 'מועד נבצרים, שאלה 1א'),
@@ -659,7 +659,7 @@ ask: spontaneous`,
   },
   {
     id: 'B21-282-5b',
-    title: 'פחם ו־$\\mathrm{CO_2}$: ספונטני ב־298 K?',
+    title: 'פחם ו־$\\mathrm{CO_2}$: ספונטני ב־$298\\,\\mathrm{K}$?',
     group: G.spont,
     topic: 'spont',
     note: bag(2021, 37282, 'מועד נבצרים, שאלה 2ב'),
@@ -674,7 +674,7 @@ ask: spontaneous`,
   },
   {
     id: 'B25-282-2e',
-    title: '$\\mathrm{PCl_5}$: $\\Delta S^\\circ$ סביבה ב־298 K',
+    title: '$\\mathrm{PCl_5}$: $\\Delta S^\\circ$ סביבה ב־$298\\,\\mathrm{K}$',
     group: G.spont,
     topic: 'spont',
     note: bag(2025, 37282, 'שאלה 2ה'),
@@ -702,7 +702,7 @@ ask: spontaneous`,
   },
   {
     id: 'S1',
-    title: 'יצירת $\\mathrm{NH_3}$ ב־298 K',
+    title: 'יצירת $\\mathrm{NH_3}$ ב־$298\\,\\mathrm{K}$',
     group: G.spont,
     topic: 'spont',
     note: STYLE,
@@ -719,7 +719,7 @@ ask: spontaneous`,
   },
   {
     id: 'S2',
-    title: 'פירוק $\\mathrm{CaCO_3}$ ב־25°C',
+    title: 'פירוק $\\mathrm{CaCO_3}$ ב־$25^\\circ\\mathrm{C}$',
     group: G.spont,
     topic: 'spont',
     note: STYLE,
@@ -736,7 +736,7 @@ ask: spontaneous`,
   },
   {
     id: 'S3',
-    title: 'פירוק $\\mathrm{CaCO_3}$ ב־1200 K',
+    title: 'פירוק $\\mathrm{CaCO_3}$ ב־$1200\\,\\mathrm{K}$',
     group: G.spont,
     topic: 'spont',
     note: STYLE,
@@ -769,7 +769,7 @@ ask: spontaneous`,
   },
   {
     id: 'S5',
-    title: 'אידוי מים ב־100°C',
+    title: 'אידוי מים ב־$100^\\circ\\mathrm{C}$',
     group: G.spont,
     topic: 'spont',
     note: `${STYLE} (נתוני CRC)`,
@@ -967,6 +967,42 @@ ask: kinetic`,
     text: `«תערובת של הגזים מימן וחמצן נשמרת בכלי זכוכית סגור לאורך זמן, ללא שינוי|h:none».
 לתגובה {rxn} נתון ש־{sign} בטמפרטורת החדר.
 «מדוע התגובה לא מתרחשת|a:why-not»? «הציעו דרך|a:fix» שבה התגובה תתרחש.`,
+  },
+  {
+    id: 'B23-282-2b',
+    title: 'ניצוץ חשמלי: איזה היגד נכון?',
+    group: G.kin,
+    topic: 'kinetic',
+    note: bag(2023, 37282, 'שאלה 2ב'),
+    original: pg('37282-2023-6-p4'),
+    input: `rxn: H2(g) + 1/2O2(g) -> H2O(g)
+change: spark
+statement I: Ea-down
+statement II: KE-up
+ask: collision`,
+    text: `«תערובת של הגזים מימן וחמצן נשמרת בכלי זכוכית סגור לאורך זמן, ללא שינוי|h:none».
+«כאשר משקיעים אנרגייה על ידי הפעלת ניצוץ חשמלי|h:spark» בתערובת הגזים מתרחשת תגובה (1): {rxn}
+«איזה מבין ההיגדים, I או II, הוא ההיגד הנכון|a:statement»? «הסבירו את ההיגד שבחרתם באמצעות תורת ההתנגשויות|v:collision».
+I. בעקבות השקעת אנרגייה על ידי הפעלת ניצוץ חשמלי קטנה אנרגיית השפעול של התגובה (1), והתגובה מתרחשת.
+II. בעקבות השקעת אנרגייה על ידי הפעלת ניצוץ חשמלי גדלה האנרגייה הקינטית של מולקולות המגיבים בתגובה (1), והתגובה מתרחשת.`,
+  },
+  {
+    id: 'B21-282-1a3',
+    title: 'למה ב־$1173\\,\\mathrm{K}$ ולא ב־$298\\,\\mathrm{K}$?',
+    group: G.kin,
+    topic: 'kinetic',
+    note: bag(2021, 37282, 'מועד נבצרים, שאלה 1א iii'),
+    original: pg('37282-2021-5-p2'),
+    input: `rxn: 2CO2(g) + Ti(s) -> 2CO(g) + TiO2(s)
+change: heat
+statement a: Ea-down
+statement b: more-reach
+T = 1173 K
+ask: collision`,
+    text: `תגובה (1): {rxn}
+«לפניך שני היגדים|g:stmts», (a) ו־(b). «איזה מן ההיגדים מסביר נכון|a:statement» «מדוע מבצעים את תגובה (1) בטמפרטורה|h:hot» {T} ולא «בטמפרטורת החדר|h:room»?
+(a) בטמפרטורה הגבוהה אנרגיית השפעול של תגובה (1) נמוכה מאנרגיית השפעול שלה בטמפרטורת החדר.
+(b) בטמפרטורה הגבוהה ליותר חלקיקים של המגיבים בתגובה (1) יש אנרגייה מספקת כדי ליצור תצמידים משופעלים.`,
   },
   {
     id: 'K2',

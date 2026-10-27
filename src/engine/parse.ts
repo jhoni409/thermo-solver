@@ -39,7 +39,8 @@ export type Ask =
   | 'phase-compare'
   | 'dH-bonds'
   | 'bond-unknown'
-  | 'diagram';
+  | 'diagram'
+  | 'collision';
 
 export const ASKS: Ask[] = [
   'spontaneous',
@@ -59,7 +60,14 @@ export const ASKS: Ask[] = [
   'dH-bonds',
   'bond-unknown',
   'diagram',
+  'collision',
 ];
+
+/** T18: what is done to make a slow reaction happen */
+export type Change = 'heat' | 'spark' | 'catalyst';
+/** T18: what a statement claims about it */
+export type Claim = 'Ea-down' | 'KE-up' | 'more-reach' | 'dH-change';
+export const CLAIMS: Claim[] = ['Ea-down', 'KE-up', 'more-reach', 'dH-change'];
 
 /** what a "signs" question asks for */
 export type SignKey = 'dH' | 'dSsys' | 'dSsurr' | 'dStot';
@@ -100,6 +108,9 @@ export interface Problem {
   /** ΔH°f of an unknown species ("dHf X(s) = x") */
   dHfUnknown?: string;
   observed?: 'none';
+  /** T18 */
+  change?: Change;
+  statements?: { label: string; claim: Claim }[];
   ask: Ask;
 }
 
@@ -190,6 +201,7 @@ const ASK_ALIASES: Record<string, Ask> = {
   'dh-bonds': 'dH-bonds',
   'bond-unknown': 'bond-unknown',
   diagram: 'diagram',
+  collision: 'collision',
 };
 
 const SIGN_KEY: Record<string, SignKey> = { dh: 'dH', ds: 'dSsys', 'ds sys': 'dSsys', 'ds surr': 'dSsurr', 'ds total': 'dStot' };
@@ -301,6 +313,16 @@ export function parse(raw: string): Problem {
     if ((m = /^find\s*:\s*(dH|dS(?:\s+(?:sys|surr|total))?|spont|compare|any-T|catalyst)$/i.exec(line))) {
       const k = m[1].toLowerCase().replace(/\s+/g, ' ');
       p.find = k === 'spont' || k === 'compare' || k === 'any-t' || k === 'catalyst' ? ((k === 'any-t' ? 'any-T' : k) as Problem['find']) : SIGN_KEY[k];
+      continue;
+    }
+    if ((m = /^change\s*:\s*(heat|spark|catalyst)$/i.exec(line))) {
+      p.change = m[1].toLowerCase() as Change;
+      continue;
+    }
+    if ((m = /^statement\s+(\S+)\s*:\s*(\S+)$/i.exec(line))) {
+      const claim = CLAIMS.find((c) => c.toLowerCase() === m![2].toLowerCase());
+      if (!claim) throw new InputError(`היגד לא מוכר: ${m[2]}`, `statement I: ${CLAIMS.join(' | ')}`);
+      (p.statements ??= []).push({ label: m[1], claim });
       continue;
     }
     if (/^observed\s*:\s*no reaction$/i.test(line)) {

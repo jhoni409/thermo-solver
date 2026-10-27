@@ -6,7 +6,7 @@ import type { Solution } from '../engine/solve';
 import { topicOfType } from '../learn/topics';
 import type { Board } from './board';
 import { decodeSteps, pinEquation, pinRecipe, markRecipe, type Step } from './common';
-import { spontLesson, backLesson, signsLesson, kineticLesson, dSsignLesson } from './entropy';
+import { spontLesson, backLesson, signsLesson, kineticLesson, dSsignLesson, collisionLesson } from './entropy';
 import { prLesson, heatLesson, dHnewLesson, phaseLesson, bondsLesson, diagramLesson } from './calc';
 
 export type { Step };
@@ -66,5 +66,7 @@ function stepsOf(sol: Solution, p: Problem): Step[] {
       return bondsLesson(sol, p);
     case 'diagram':
       return diagramLesson(sol, p);
+    case 'collision':
+      return collisionLesson(sol, p);
   }
 }

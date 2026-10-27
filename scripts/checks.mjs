@@ -12,6 +12,7 @@ const ids = [
   'B25-282-1a', 'B22-282-2a', 'B23-381-5', 'P3', 'P4', 'B24-282-2b', 'B23-282-2c', 'B23-282-1z', 'B25-381-13', 'X-bond-CC', 'P14',
   'g-spontaneous-3', 'g-back-3', 'g-signs-3', 'g-signs-4', 'g-kinetic-4', 'g-dS-sign-3', 'g-S-unknown-3', 'g-dHf-unknown-3',
   'g-heat-3', 'g-mass-for-heat-3', 'g-dH-from-q-3', 'g-dH-new-3', 'g-phase-compare-4', 'g-bond-unknown-4', 'g-diagram-5',
+  'B23-282-2b', 'B21-282-1a3', 'g-collision-3', 'g-collision-4', 'g-dH-bonds-11', 'g-bond-unknown-7',
   'c:spont', 'c:exo', 'c:phase', 'c:bonds', 'c:rate', 'c:dS-sign', 'c:dS-calc', 'c:dHf', 'c:back', 'c:signs', 'c:kinetic',
 ];
 const browser = await chromium.launch();

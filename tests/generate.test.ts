@@ -8,7 +8,7 @@ import { textLines, phrasesOf } from '../src/engine/text';
 import { generate, fromId, generateForTopic, GEN_KINDS, type GenKind } from '../src/engine/generate';
 import { partsOf } from '../src/engine/practice';
 import { isStdElement } from '../src/engine/chem';
-import { SPECIES, REACTIONS, BOND_RXNS, BONDS_OF, BOND_E, PHASES, atoms, molarMass, isElementStd } from '../src/engine/bank';
+import { SPECIES, REACTIONS, BOND_RXNS, BONDS_OF, BOND_SETS, bondsIn, PHASES, atoms, molarMass, isElementStd } from '../src/engine/bank';
 import { PHRASES } from '../src/learn/phrases';
 import { TOPICS } from '../src/learn/topics';
 import { lessonOf } from '../src/lesson/lessons';
@@ -153,15 +153,31 @@ function independent(kind: GenKind, p: Problem, sol: Solution) {
     case 'bond-unknown': {
       const e = (b: string) => (p.bond!.get(b) == null ? NaN : n(p.bond!.get(b)));
       const side = (xs: Species[], f: (b: string) => number) => xs.reduce((a, x) => a + c(x) * p.bondsOf!.get(x.f)!.reduce((t, u) => t + u.count * f(u.bond), 0), 0);
-      if (kind === 'dH-bonds') close(n(s.dH), side(p.rxn!.R, e) - side(p.rxn!.P, e), 'ΔH');
+      if (kind === 'dH-bonds') {
+        close(n(s.dH), side(p.rxn!.R, e) - side(p.rxn!.P, e), 'ΔH');
+        expect(BOND_SETS.some((st) => [...p.bond!.entries()].every(([b, v]) => st.E[b] === String(v!.toNumber()))), 'one set per question').toBe(true);
+      }
       else {
         const bx = s.x.bond as string;
         const known = (b: string) => (b === bx ? 0 : e(b));
         const cnt = (b: string) => (b === bx ? 1 : 0);
         const x = (n(p.dH!.v) - side(p.rxn!.R, known) + side(p.rxn!.P, known)) / (side(p.rxn!.R, cnt) - side(p.rxn!.P, cnt));
         close(n(s.x.v), x, 'x');
-        close(n(s.x.v), parseFloat(BOND_E[bx]), 'x = the table value');
+        // the question's table is one set: the given values all match it, and x comes back as its value
+        const set = BOND_SETS.find((st) => [...p.bond!.entries()].every(([b, v]) => v == null || st.E[b] === String(v.toNumber())))!;
+        expect(set, 'the bond values come from one set').toBeDefined();
+        close(n(s.x.v), parseFloat(set.E[bx]), 'x = the table value');
       }
+      break;
+    }
+    case 'collision': {
+      // T18, written again: heat / spark raise the particles' energy (Ea stays); a catalyst lowers Ea (energy stays)
+      const truth = (claim: string) =>
+        claim === 'more-reach' || (claim === 'KE-up' && p.change !== 'catalyst') || (claim === 'Ea-down' && p.change === 'catalyst');
+      const right = p.statements!.filter((st) => truth(st.claim));
+      expect(right.length).toBe(1);
+      expect(s.claims[s.correct].label).toBe(right[0].label);
+      if (p.change === 'spark') expect(p.rxn!.R.every((x) => x.state === 'g'), 'a spark only for gases').toBe(true);
       break;
     }
     case 'diagram': {
@@ -200,12 +216,18 @@ describe('the data bank', () => {
   });
   it('bond molecules: the bonds give the right atoms', () => {
     for (const [f, bs] of Object.entries(BONDS_OF)) {
-      for (const [, b] of bs) expect(BOND_E[b], b).toBeDefined();
+      for (const [, b] of bs) expect(BOND_SETS.some((st) => st.E[b]), b).toBe(true);
       // every atom is in a bond (H once, the others at least once)
       const inBonds = new Set(bs.flatMap(([, b]) => b.split(/[-=#]/)));
       for (const el of Object.keys(atoms(f))) expect(inBonds.has(el), `${f} ${el}`).toBe(true);
     }
-    for (const x of BOND_RXNS) for (const [, k] of [...x.R, ...x.P]) expect(BONDS_OF[k.replace(/\(.+\)$/, '')], k).toBeDefined();
+    for (const x of BOND_RXNS) {
+      for (const [, k] of [...x.R, ...x.P]) {
+        expect(BONDS_OF[k.replace(/\(.+\)$/, '')], k).toBeDefined();
+        expect(k.endsWith('(g)'), `${k}: bond calculations are for gases only`).toBe(true);
+      }
+      expect(BOND_SETS.some((st) => bondsIn(x).every((b) => st.E[b])), `${x.he}: one set has all its bonds`).toBe(true);
+    }
   });
   it('phase changes are of one substance, both states in the bank', () => {
     for (const [f, a, b] of PHASES) {

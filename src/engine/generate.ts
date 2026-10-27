@@ -6,13 +6,14 @@
 // Every problem is checked before it is shown: it must parse, solve, render, have practice parts, and its numbers
 // must come out clean. tests/generate.test.ts re-computes every answer independently.
 
-import { parse, InputError, type Ask, type Problem } from './parse';
-import { solve, type Solution, type SpontSol } from './solve';
+import { parse, InputError, CLAIMS, type Ask, type Problem, type Change } from './parse';
+import { solve, CLAIM_TRUE, type Solution, type SpontSol } from './solve';
+import { claimHe } from './statement';
 import { F, ZERO, type Frac } from './frac';
 import { fmt, exactDecimal } from './format';
 import { textLines } from './text';
 import { partsOf } from './practice';
-import { SPECIES, REACTIONS, BOND_RXNS, PHASES, BOND_E, BONDS_OF, dHfOf, S0of, isElementStd, molarMass, statesOf, type RealRxn, type Tag } from './bank';
+import { SPECIES, REACTIONS, BOND_RXNS, PHASES, BOND_SETS, BONDS_OF, bondsIn, dHfOf, S0of, isElementStd, molarMass, statesOf, type RealRxn, type Tag } from './bank';
 
 export type GenKind = Ask;
 
@@ -34,6 +35,7 @@ export const GEN_KINDS: { kind: GenKind; he: string; topic: string }[] = [
   { kind: 'back', he: 'בחזרה מהיקום', topic: 'back' },
   { kind: 'signs', he: 'סימנים בלי חישוב', topic: 'signs' },
   { kind: 'kinetic', he: 'ספונטני אבל לא קורה', topic: 'kinetic' },
+  { kind: 'collision', he: 'תורת ההתנגשויות', topic: 'kinetic' },
 ];
 
 export interface GenProblem {
@@ -506,6 +508,36 @@ function genKinetic(r: R): Built {
   return { input, text, check: (s) => s.type === 'kinetic' && s.spont === tot.sign() > 0 };
 }
 
+// ---------------------------------------------------------------- T18: which statement is right
+
+function genCollision(r: R): Built {
+  const v = verbs(r);
+  const slow = REACTIONS.filter((y) => y.tags.includes('slow'));
+  const x = inst(pick(r, slow), F(1), false);
+  // a spark only for a mixture of gases that burn
+  const gasesBurn = x.tags.includes('comb') && x.R.every((t) => t.k.endsWith('(g)'));
+  const change: Change = pick(r, gasesBurn ? (['heat', 'spark', 'catalyst'] as Change[]) : (['heat', 'catalyst'] as Change[]));
+  const yes = CLAIMS.filter((c) => CLAIM_TRUE[change][c]);
+  const no = CLAIMS.filter((c) => !CLAIM_TRUE[change][c]);
+  const claims = shuffle(r, [pick(r, yes), pick(r, no)]);
+  const labels = pick(r, [['I', 'II'], ['a', 'b']]);
+  const input = [`rxn: ${rxnStr(x)}`, `change: ${change}`, ...claims.map((c, i) => `statement ${labels[i]}: ${c}`), 'ask: collision'];
+  const context =
+    change === 'spark'
+      ? `«תערובת המגיבים נשמרת בכלי סגור לאורך זמן, ללא שינוי|h:none». «כאשר משקיעים אנרגייה על ידי הפעלת ניצוץ חשמלי|h:spark», מתרחשת התגובה.`
+      : change === 'heat'
+        ? `«בטמפרטורת החדר|h:room» התגובה כמעט לא מתרחשת. «כאשר מחממים את המגיבים|h:hot», היא מתרחשת.`
+        : `«בטמפרטורת החדר|h:room» התגובה כמעט לא מתרחשת. «כאשר מוסיפים זרז מתאים|g:cat», היא מתרחשת.`;
+  const text = [
+    intro(r, x, v),
+    context,
+    `«${pick(r, [`${v.here} שני היגדים`, 'נתונים שני היגדים'])}|g:stmts»:`,
+    ...claims.map((c, i) => `${labels[i]}. ${claimHe(c, change)}`),
+    `«${pick(r, ['איזה מבין ההיגדים הוא ההיגד הנכון', 'איזה מן ההיגדים מסביר נכון מדוע התגובה מתרחשת'])}|a:statement»? «${pick(r, [`${v.why} באמצעות תורת ההתנגשויות`, `${v.expl} באמצעות תורת ההתנגשויות`])}|v:collision».`,
+  ];
+  return { input, text, check: (s) => s.type === 'collision' && s.claims[s.correct].claim === claims.find((c) => CLAIM_TRUE[change][c]) };
+}
+
 // ---------------------------------------------------------------- T9: the sign of ΔS° from the equation
 
 function phaseInst(r: R, noGas: boolean): Inst {
@@ -746,7 +778,10 @@ function genPhase(r: R): Built {
 
 function genBonds(r: R, kind: 'dH-bonds' | 'bond-unknown'): Built {
   const v = verbs(r);
-  const x = realInst(r, BOND_RXNS, 0.3);
+  // one bond table per question: the bagrut's, or OpenStax's (more bonds, so more reactions)
+  const set = r() < 0.4 ? BOND_SETS[0] : BOND_SETS[1];
+  const BOND_E = set.E;
+  const x = realInst(r, BOND_RXNS.filter((y) => bondsIn(y).every((b) => BOND_E[b])), 0.3);
   const used = new Map<string, number>(); // bond → (broken − formed) count
   for (const t of x.R) for (const [c, b] of BONDS_OF[fOf(t.k)]) used.set(b, (used.get(b) ?? 0) + c * t.c.toNumber());
   for (const t of x.P) for (const [c, b] of BONDS_OF[fOf(t.k)]) used.set(b, (used.get(b) ?? 0) - c * t.c.toNumber());
@@ -816,6 +851,7 @@ const GENS: Record<GenKind, (r: R) => Built> = {
   back: genBack,
   signs: genSigns,
   kinetic: genKinetic,
+  collision: genCollision,
   'dS-sign': genDSign,
   dS: (r) => genPR(r, 'dS'),
   'S-unknown': (r) => genPR(r, 'S-unknown'),

@@ -71,6 +71,11 @@ describe('library: exact answers', () => {
     expect(sol('B23-282-1b').answer).toEqual({ kind: 'compare', bigger: 'dSsurr' });
     expect(sol('B21-282-1e').answer).toEqual({ kind: 'compare', bigger: 'dSsurr' });
     expect(sol('K2').spont).toBe(false);
+    // T18: the collision model
+    const spark = sol('B23-282-2b');
+    expect(spark.claims[spark.correct].label).toBe('II');
+    const hot = sol('B21-282-1a3');
+    expect(hot.claims[hot.correct].label).toBe('b');
   });
 });
 

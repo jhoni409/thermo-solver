@@ -1,7 +1,7 @@
 // The problem as short Hebrew lines, built from the parsed data (no free text is read).
 // Each given value is a TeX segment with a key, so a step can light it up.
 
-import type { Problem } from './parse';
+import type { Problem, Change, Claim } from './parse';
 import { slot } from './text';
 
 export interface Seg {
@@ -21,6 +21,25 @@ export interface Statement {
 export const dS = (who: 'מערכת' | 'סביבה' | 'יקום') => `\\Delta S^\\circ_{\\text{${who}}}`;
 export const DH = '\\Delta H^\\circ';
 export const UNIT_SK = '\\,\\mathrm{J/K}';
+
+/** T18: the change, after "בעקבות", and as the subject of a sentence */
+export const CHANGE_AFTER: Record<Change, string> = { heat: 'החימום', spark: 'הפעלת ניצוץ חשמלי', catalyst: 'הוספת זרז' };
+export const CHANGE_SUBJ: Record<Change, string> = { heat: 'החימום', spark: 'הניצוץ החשמלי', catalyst: 'הזרז' };
+
+/** a statement about the change, the way the bagrut writes them */
+export function claimHe(claim: Claim, change: Change): string {
+  const c = CHANGE_AFTER[change];
+  switch (claim) {
+    case 'Ea-down':
+      return `בעקבות ${c} קטנה אנרגיית השפעול של התגובה, והתגובה מתרחשת.`;
+    case 'KE-up':
+      return `בעקבות ${c} גדלה האנרגייה הקינטית של חלקיקי המגיבים, והתגובה מתרחשת.`;
+    case 'more-reach':
+      return `בעקבות ${c} ליותר חלקיקים של המגיבים יש אנרגייה מספקת כדי ליצור תצמידים משופעלים.`;
+    case 'dH-change':
+      return `בעקבות ${c} משתנה $\\Delta H^\\circ$ של התגובה.`;
+  }
+}
 
 const SIGN_ASK: Record<string, string> = {
   dH: 'התגובה אקסותרמית או אנדותרמית?',
@@ -68,6 +87,8 @@ function askHe(p: Problem): string {
       return 'חשבו את אנרגיית הקשר החסרה (x).';
     case 'diagram':
       return `חשבו את $${DH}$ ואת אנרגיות השפעול.`;
+    case 'collision':
+      return 'איזה מבין ההיגדים הוא ההיגד הנכון? הסבירו באמצעות תורת ההתנגשויות.';
   }
 }
 
@@ -96,5 +117,7 @@ export function statement(p: Problem): Statement {
   if (p.E) put('E');
   if (p.sign && Object.keys(p.sign).length) put('sign');
   if (p.observed === 'none') lines.push([{ text: 'התגובה לא נצפית בפועל.' }]);
+  if (p.change) lines.push([{ text: `עושים: ${CHANGE_SUBJ[p.change]}` }]);
+  for (const st of p.statements ?? []) if (p.change) lines.push([{ text: `${st.label}. ${claimHe(st.claim, p.change)}` }]);
   return { lines, ask: askHe(p) };
 }
